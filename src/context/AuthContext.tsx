@@ -18,6 +18,7 @@ interface AuthContextType {
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: () => Promise<{ success: boolean; error?: string; user?: UserProfile }>;
   logout: () => void;
+  clearLocalStorageAndLogout: () => void;
   updateCurrentUserProfile: (data: Partial<UserProfile>) => void;
   switchDemoRole: (role: UserRole) => void;
   availableUsers: UserProfile[];
@@ -26,34 +27,37 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_STORAGE_KEY = 'luks_current_user_id_v1';
+const SESSION_STORAGE_KEY = 'luks_active_session_user_id';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Load user on start
+  // Load user on start - pastikan saat pertama kali buka aplikasi selalu ke halaman login
   useEffect(() => {
     try {
-      const storedId = localStorage.getItem(AUTH_STORAGE_KEY);
-      const profiles = localDb.getProfiles();
-      if (storedId) {
-        const found = profiles.find((p) => p.id === storedId);
-        if (found) {
+      // Hapus sesi pengguna di local storage agar tidak ada auto-login persisten
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem('luks_current_user_id');
+
+      // Periksa apakah tab aktif saat ini memiliki sesi login aktif di sessionStorage
+      const sessionId = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      if (sessionId) {
+        const profiles = localDb.getProfiles();
+        const found = profiles.find((p) => p.id === sessionId);
+        if (found && found.is_active) {
           setCurrentUser(found);
         } else {
-          // Default to Petugas UKS for rich immediate experience
-          const defaultUser = profiles.find((p) => p.role === 'petugas_uks') || profiles[0];
-          setCurrentUser(defaultUser);
-          if (defaultUser) localStorage.setItem(AUTH_STORAGE_KEY, defaultUser.id);
+          sessionStorage.removeItem(SESSION_STORAGE_KEY);
+          setCurrentUser(null);
         }
       } else {
-        // Default to Petugas UKS
-        const defaultUser = profiles.find((p) => p.role === 'petugas_uks') || profiles[0];
-        setCurrentUser(defaultUser);
-        if (defaultUser) localStorage.setItem(AUTH_STORAGE_KEY, defaultUser.id);
+        // Saat pertama kali buka aplikasi selalu ke halaman login
+        setCurrentUser(null);
       }
     } catch (e) {
       console.error('Error loading user session:', e);
+      setCurrentUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +89,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       setCurrentUser(user);
-      localStorage.setItem(AUTH_STORAGE_KEY, user.id);
+      sessionStorage.setItem(SESSION_STORAGE_KEY, user.id);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
 
       DataService.logAudit(
         { id: user.id, name: user.full_name, role: user.role },
@@ -152,7 +157,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       setCurrentUser(updatedUser);
-      localStorage.setItem(AUTH_STORAGE_KEY, updatedUser.id);
+      sessionStorage.setItem(SESSION_STORAGE_KEY, updatedUser.id);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
 
       DataService.logAudit(
         { id: updatedUser.id, name: updatedUser.full_name, role: updatedUser.role },
@@ -190,7 +196,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     signOutFromFirebase();
     setCurrentUser(null);
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(AUTH_STORAGE_KEY);
+  };
+
+  const clearLocalStorageAndLogout = () => {
+    if (currentUser) {
+      DataService.logAudit(
+        { id: currentUser.id, name: currentUser.full_name, role: currentUser.role },
+        'LOGOUT',
+        'profiles',
+        currentUser.id,
+        { action: 'CLEAR_LOCAL_STORAGE' }
+      );
+    }
+    signOutFromFirebase();
+    setCurrentUser(null);
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {
+      console.error('Error clearing storage:', e);
+    }
+    window.location.reload();
   };
 
   const updateCurrentUserProfile = (data: Partial<UserProfile>) => {
@@ -207,7 +235,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const candidate = profiles.find((p) => p.role === targetRole);
     if (candidate) {
       setCurrentUser(candidate);
-      localStorage.setItem(AUTH_STORAGE_KEY, candidate.id);
+      sessionStorage.setItem(SESSION_STORAGE_KEY, candidate.id);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
       DataService.logAudit(
         { id: candidate.id, name: candidate.full_name, role: candidate.role },
         'LOGIN',
@@ -228,6 +257,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         loginWithGoogle,
         logout,
+        clearLocalStorageAndLogout,
         updateCurrentUserProfile,
         switchDemoRole,
         availableUsers: localDb.getProfiles(),

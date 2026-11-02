@@ -318,278 +318,9 @@ export const INITIAL_SYSTEM_SETTINGS: SystemSetting[] = [
   },
 ];
 
-// Seed Glucose Examinations
-export const INITIAL_GLUCOSE_EXAMINATIONS: GlucoseExamination[] = [
-  {
-    id: 'gds-001',
-    examination_number: 'GDS-20261015-0001',
-    participant_id: 'user-karyawan-1',
-    examination_datetime: '2026-10-15T08:30:00+07:00',
-    examination_type: 'puasa',
-    last_meal_datetime: '2026-10-14T22:00:00+07:00',
-    fasting_duration_hours: 10.5,
-    result_value: 142.0,
-    result_unit: 'mg/dL',
-    symptoms: 'Sering merasa haus pada malam hari, badan terasa agak lemas',
-    participant_condition: 'Kondisi sadar baik (compos mentis), lelah setelah mengajar pekan ujian',
-    examiner_id: 'user-nakes-1',
-    examiner_name: 'Ns. Siti Rahmah, S.Kep',
-    device_name: 'Accu-Chek Instant #UKS-01',
-    notes: 'Pemeriksaan skrining berkala guru & karyawan sekolah semester ganjil.',
-    classification: 'tindak_lanjut',
-    classification_parameter_version: 'V2026.1-RESMI',
-    consent_status: 'diberikan',
-    record_status: 'resmi',
-    created_at: '2026-10-15T08:45:00+07:00',
-    updated_at: '2026-10-15T08:45:00+07:00',
-  },
-  {
-    id: 'gds-002',
-    examination_number: 'GDS-20261018-0002',
-    participant_id: 'user-siswa-2',
-    examination_datetime: '2026-10-18T10:15:00+07:00',
-    examination_type: 'sewaktu',
-    last_meal_datetime: '2026-10-18T07:00:00+07:00',
-    result_value: 110.0,
-    result_unit: 'mg/dL',
-    symptoms: 'Pusing ringan setelah upacara',
-    participant_condition: 'Tampak pucat saat datang ke UKS, membaik setelah istirahat',
-    examiner_id: 'user-nakes-1',
-    examiner_name: 'Ns. Siti Rahmah, S.Kep',
-    device_name: 'Accu-Chek Instant #UKS-01',
-    notes: 'Hasil gula darah sewaktu dalam batas normal anak usia sekolah.',
-    classification: 'normal',
-    classification_parameter_version: 'V2026.1-RESMI',
-    consent_status: 'diberikan',
-    record_status: 'resmi',
-    created_at: '2026-10-18T10:30:00+07:00',
-    updated_at: '2026-10-18T10:30:00+07:00',
-  },
-  {
-    id: 'gds-003',
-    examination_number: 'GDS-20261022-0003',
-    participant_id: 'user-siswa-1',
-    examination_datetime: '2026-10-22T09:40:00+07:00',
-    examination_type: 'sewaktu',
-    last_meal_datetime: '2026-10-22T06:30:00+07:00',
-    result_value: 95.5,
-    result_unit: 'mg/dL',
-    symptoms: 'Tidak ada keluhan spesifik gula darah, lemas karena telat sarapan',
-    participant_condition: 'Kondisi baik, kooperatif',
-    examiner_id: 'user-nakes-1',
-    examiner_name: 'Ns. Siti Rahmah, S.Kep',
-    device_name: 'Accu-Chek Instant #UKS-02',
-    notes: 'Pemeriksaan rutin UKS Lazuardi.',
-    classification: 'normal',
-    classification_parameter_version: 'V2026.1-RESMI',
-    consent_status: 'diberikan',
-    record_status: 'resmi',
-    created_at: '2026-10-22T09:55:00+07:00',
-    updated_at: '2026-10-22T09:55:00+07:00',
-  },
-  {
-    id: 'gds-004',
-    examination_number: 'GDS-20261025-0004',
-    participant_id: 'user-karyawan-1',
-    examination_datetime: '2026-10-25T08:15:00+07:00',
-    examination_type: 'puasa',
-    last_meal_datetime: '2026-10-24T21:30:00+07:00',
-    fasting_duration_hours: 10.75,
-    result_value: 122.0,
-    result_unit: 'mg/dL',
-    symptoms: 'Kondisi membaik setelah mengatur pola makan malam rendah karbohidrat',
-    participant_condition: 'Segar, tidak pusing',
-    examiner_id: 'user-nakes-1',
-    examiner_name: 'Ns. Siti Rahmah, S.Kep',
-    device_name: 'Accu-Chek Instant #UKS-01',
-    notes: 'Pemeriksaan evaluasi berkala setelah tindak lanjut pertama.',
-    classification: 'pemantauan',
-    classification_parameter_version: 'V2026.1-RESMI',
-    consent_status: 'diberikan',
-    record_status: 'resmi',
-    created_at: '2026-10-25T08:35:00+07:00',
-    updated_at: '2026-10-25T08:35:00+07:00',
-  },
-  {
-    id: 'gds-005',
-    examination_number: 'GDS-20261027-0005',
-    participant_id: 'user-karyawan-2',
-    examination_datetime: '2026-10-27T11:00:00+07:00',
-    examination_type: 'sewaktu',
-    last_meal_datetime: '2026-10-27T08:00:00+07:00',
-    result_value: 148.0,
-    result_unit: 'mg/dL',
-    symptoms: 'Sedikit mengantuk setelah makan siang',
-    participant_condition: 'Kondisi stabil',
-    examiner_id: 'user-nakes-1',
-    examiner_name: 'Ns. Siti Rahmah, S.Kep',
-    device_name: 'Accu-Chek Instant #UKS-01',
-    notes: 'Perlu pemantauan gaya hidup dan hidrasi harian.',
-    classification: 'perlu_perhatian',
-    classification_parameter_version: 'V2026.1-RESMI',
-    consent_status: 'diberikan',
-    record_status: 'resmi',
-    created_at: '2026-10-27T11:15:00+07:00',
-    updated_at: '2026-10-27T11:15:00+07:00',
-  },
-  {
-    id: 'gds-006',
-    examination_number: 'GDS-20261026-0006',
-    participant_id: 'user-siswa-3',
-    examination_datetime: '2026-10-26T09:00:00+07:00',
-    examination_type: 'sewaktu',
-    result_value: 118.0,
-    result_unit: 'mg/dL',
-    symptoms: 'Skrining berkala siswa SD Lazuardi',
-    participant_condition: 'Sehat, ceria',
-    examiner_id: 'user-nakes-1',
-    examiner_name: 'Ns. Siti Rahmah, S.Kep',
-    device_name: 'Accu-Chek Instant #UKS-01',
-    classification: 'normal',
-    classification_parameter_version: 'V2026.1-RESMI',
-    consent_status: 'diberikan',
-    record_status: 'resmi',
-    created_at: '2026-10-26T09:15:00+07:00',
-    updated_at: '2026-10-26T09:15:00+07:00',
-  },
-  {
-    id: 'gds-007',
-    examination_number: 'GDS-20261027-0007',
-    participant_id: 'user-siswa-1',
-    examination_datetime: '2026-10-27T11:30:00+07:00',
-    examination_type: 'setelah_makan',
-    result_value: 152.0,
-    result_unit: 'mg/dL',
-    symptoms: 'Merasa agak begah dan haus setelah minum boba manis',
-    participant_condition: 'Kondisi stabil',
-    examiner_id: 'user-nakes-1',
-    examiner_name: 'Ns. Siti Rahmah, S.Kep',
-    device_name: 'Accu-Chek Instant #UKS-02',
-    classification: 'perlu_perhatian',
-    classification_parameter_version: 'V2026.1-RESMI',
-    consent_status: 'diberikan',
-    record_status: 'resmi',
-    created_at: '2026-10-27T11:45:00+07:00',
-    updated_at: '2026-10-27T11:45:00+07:00',
-  },
-  {
-    id: 'gds-008',
-    examination_number: 'GDS-20261027-0008',
-    participant_id: 'user-siswa-2',
-    examination_datetime: '2026-10-27T14:15:00+07:00',
-    examination_type: 'puasa',
-    result_value: 115.0,
-    result_unit: 'mg/dL',
-    symptoms: 'Skrining berkala siswa SMA',
-    participant_condition: 'Kondisi baik',
-    examiner_id: 'user-nakes-1',
-    examiner_name: 'Ns. Siti Rahmah, S.Kep',
-    device_name: 'Accu-Chek Instant #UKS-01',
-    classification: 'pemantauan',
-    classification_parameter_version: 'V2026.1-RESMI',
-    consent_status: 'diberikan',
-    record_status: 'resmi',
-    created_at: '2026-10-27T14:30:00+07:00',
-    updated_at: '2026-10-27T14:30:00+07:00',
-  },
-  {
-    id: 'gds-009',
-    examination_number: 'GDS-20261027-0009',
-    participant_id: 'user-siswa-2',
-    examination_datetime: '2026-10-27T15:00:00+07:00',
-    examination_type: 'sewaktu',
-    result_value: 205.0,
-    result_unit: 'mg/dL',
-    symptoms: 'Sering haus dan buang air kecil, badan terasa lesu',
-    participant_condition: 'Tampak lelah',
-    examiner_id: 'user-nakes-1',
-    examiner_name: 'Ns. Siti Rahmah, S.Kep',
-    device_name: 'Accu-Chek Instant #UKS-01',
-    classification: 'tindak_lanjut',
-    classification_parameter_version: 'V2026.1-RESMI',
-    consent_status: 'diberikan',
-    record_status: 'resmi',
-    created_at: '2026-10-27T15:15:00+07:00',
-    updated_at: '2026-10-27T15:15:00+07:00',
-  },
-];
-
-// Seed Glucose Follow Ups
-export const INITIAL_GLUCOSE_FOLLOWUPS: GlucoseFollowUp[] = [
-  {
-    id: 'gfu-001',
-    examination_id: 'gds-001',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'sedang_dipantau',
-    recommended_action: 'Edukasi diet rendah gula, dianjurkan jalan kaki 30 menit sehari, dan jadwal cek ulang GDP 10 hari.',
-    scheduled_date: '2026-11-05',
-    communication_notes: 'Telah disampaikan secara pribadi kepada Bapak Budi Santoso di ruang konseling UKS.',
-    created_at: '2026-10-15T09:00:00+07:00',
-    updated_at: '2026-10-25T08:40:00+07:00',
-  },
-  {
-    id: 'gfu-002',
-    examination_id: 'gds-005',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'belum_dilakukan',
-    recommended_action: 'Jadwalkan pemeriksaan gula darah puasa terstandar pekan depan.',
-    scheduled_date: '2026-11-03',
-    communication_notes: 'Akan dihubungi via email resmi sekolah.',
-    created_at: '2026-10-27T11:20:00+07:00',
-    updated_at: '2026-10-27T11:20:00+07:00',
-  },
-  {
-    id: 'gfu-003',
-    examination_id: 'gds-007',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'belum_dilakukan',
-    recommended_action: 'Edukasi batasi minuman manis berpemanis buatan dan perbanyak minum air putih.',
-    scheduled_date: '2026-11-04',
-    communication_notes: 'Koordinasi dengan orang tua murid.',
-    created_at: '2026-10-27T11:50:00+07:00',
-    updated_at: '2026-10-27T11:50:00+07:00',
-  },
-  {
-    id: 'gfu-004',
-    examination_id: 'gds-009',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'dirujuk',
-    recommended_action: 'Rekomendasi konsultasi ke Dokter Spesialis Anak / Penyakit Dalam untuk pemeriksaan HbA1c laboratorium.',
-    scheduled_date: '2026-10-29',
-    referral_details: 'Rujukan ke RS Puri Cinere',
-    communication_notes: 'Orang tua siswa telah dihubungi dan menyetujui jadwal konsultasi.',
-    created_at: '2026-10-27T15:30:00+07:00',
-    updated_at: '2026-10-27T15:30:00+07:00',
-  },
-  {
-    id: 'gfu-005',
-    examination_id: 'gds-002',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'selesai',
-    recommended_action: 'Edukasi sarapan bergizi sebelum upacara bendera.',
-    completed_at: '2026-10-20T10:00:00+07:00',
-    communication_notes: 'Kondisi siswa telah kembali normal dan aktif belajar.',
-    created_at: '2026-10-18T10:45:00+07:00',
-    updated_at: '2026-10-20T10:00:00+07:00',
-  },
-  {
-    id: 'gfu-006',
-    examination_id: 'gds-004',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'selesai',
-    recommended_action: 'Evaluasi pola makan rendah karbohidrat malam hari tuntas dan terkendali.',
-    completed_at: '2026-10-26T16:00:00+07:00',
-    communication_notes: 'Bapak Budi Santoso melaporkan stamina membaik.',
-    created_at: '2026-10-25T08:50:00+07:00',
-    updated_at: '2026-10-26T16:00:00+07:00',
-  },
-];
+// Glucose Examinations & Follow Ups (Hanya data nyata dari Supabase / input baru)
+export const INITIAL_GLUCOSE_EXAMINATIONS: GlucoseExamination[] = [];
+export const INITIAL_GLUCOSE_FOLLOWUPS: GlucoseFollowUp[] = [];
 
 // Seed UKS Visits (Notice participant user-siswa-3 has 3 visits in October to demonstrate Repeat Visit Detection)
 export const INITIAL_UKS_VISITS: UksVisit[] = [
@@ -832,58 +563,8 @@ export const INITIAL_UKS_ASSESSMENTS: UksAssessment[] = [
   },
 ];
 
-// Seed UKS Follow Ups
-export const INITIAL_UKS_FOLLOWUPS: UksFollowUp[] = [
-  {
-    id: 'ufu-001',
-    visit_id: 'visit-003',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'sedang_dipantau',
-    scheduled_date: '2026-10-28',
-    parent_or_contact_called_at: '2026-10-26T08:35:00+07:00',
-    contact_person: 'Bapak Dodi Arkananta',
-    pickup_person: 'Bapak Dodi Arkananta',
-    pickup_contact: '0815-1122-4456',
-    handover_notes: 'Dianjurkan istirahat di rumah selama 2-3 hari hingga demam reda total. Membawa surat sakit dokter bila kembali ke sekolah.',
-    created_at: '2026-10-26T09:35:00+07:00',
-    updated_at: '2026-10-26T09:35:00+07:00',
-  },
-  {
-    id: 'ufu-002',
-    visit_id: 'visit-007',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'dirujuk',
-    scheduled_date: '2026-10-29',
-    referral_destination: 'Klinik Fisioterapi Olahraga Cinere',
-    handover_notes: 'Rujukan evaluasi ligament ankle pasca terkilir.',
-    created_at: '2026-10-27T16:20:00+07:00',
-    updated_at: '2026-10-27T16:20:00+07:00',
-  },
-  {
-    id: 'ufu-003',
-    visit_id: 'visit-001',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'selesai',
-    completed_at: '2026-10-15T10:00:00+07:00',
-    handover_notes: 'Luka lecet lutut siswa mengering bersih, plester dilepas.',
-    created_at: '2026-10-12T09:55:00+07:00',
-    updated_at: '2026-10-15T10:00:00+07:00',
-  },
-  {
-    id: 'ufu-004',
-    visit_id: 'visit-006',
-    responsible_staff_id: 'user-nakes-1',
-    responsible_staff_name: 'Ns. Siti Rahmah, S.Kep',
-    follow_up_status: 'selesai',
-    completed_at: '2026-10-27T15:00:00+07:00',
-    handover_notes: 'Keluhan migrain guru teratasi setelah istirahat cukup.',
-    created_at: '2026-10-27T14:45:00+07:00',
-    updated_at: '2026-10-27T15:00:00+07:00',
-  },
-];
+// Seed UKS Follow Ups (Hanya data nyata dari Supabase / input baru)
+export const INITIAL_UKS_FOLLOWUPS: UksFollowUp[] = [];
 
 // Seed Notifications
 export const INITIAL_NOTIFICATIONS: AppNotification[] = [
@@ -1047,11 +728,32 @@ export const localDb = {
   getHealthParams: () => getStorage<HealthClassificationParameter[]>(STORAGE_KEYS.HEALTH_PARAMS, INITIAL_HEALTH_PARAMETERS),
   setHealthParams: (data: HealthClassificationParameter[]) => setStorage(STORAGE_KEYS.HEALTH_PARAMS, data),
 
-  getGlucoseExams: () => getStorage<GlucoseExamination[]>(STORAGE_KEYS.GLUCOSE_EXAMS, INITIAL_GLUCOSE_EXAMINATIONS),
-  setGlucoseExams: (data: GlucoseExamination[]) => setStorage(STORAGE_KEYS.GLUCOSE_EXAMS, data),
+  getGlucoseExams: () => {
+    const exams = getStorage<GlucoseExamination[]>(STORAGE_KEYS.GLUCOSE_EXAMS, INITIAL_GLUCOSE_EXAMINATIONS);
+    // Bersihkan data mock lama yang ber-ID gds-001 s.d gds-009 agar hanya data nyata Supabase yang tampil
+    const cleaned = exams.filter((e) => !e.id.startsWith('gds-00'));
+    if (cleaned.length !== exams.length) {
+      setStorage(STORAGE_KEYS.GLUCOSE_EXAMS, cleaned);
+    }
+    return cleaned;
+  },
+  setGlucoseExams: (data: GlucoseExamination[]) => {
+    const cleaned = data.filter((e) => !e.id.startsWith('gds-00'));
+    setStorage(STORAGE_KEYS.GLUCOSE_EXAMS, cleaned);
+  },
 
-  getGlucoseFollowUps: () => getStorage<GlucoseFollowUp[]>(STORAGE_KEYS.GLUCOSE_FOLLOWUPS, INITIAL_GLUCOSE_FOLLOWUPS),
-  setGlucoseFollowUps: (data: GlucoseFollowUp[]) => setStorage(STORAGE_KEYS.GLUCOSE_FOLLOWUPS, data),
+  getGlucoseFollowUps: () => {
+    const list = getStorage<GlucoseFollowUp[]>(STORAGE_KEYS.GLUCOSE_FOLLOWUPS, INITIAL_GLUCOSE_FOLLOWUPS);
+    const cleaned = list.filter((f) => !f.id.startsWith('gfu-00'));
+    if (cleaned.length !== list.length) {
+      setStorage(STORAGE_KEYS.GLUCOSE_FOLLOWUPS, cleaned);
+    }
+    return cleaned;
+  },
+  setGlucoseFollowUps: (data: GlucoseFollowUp[]) => {
+    const cleaned = data.filter((f) => !f.id.startsWith('gfu-00'));
+    setStorage(STORAGE_KEYS.GLUCOSE_FOLLOWUPS, cleaned);
+  },
 
   getUksVisits: () => getStorage<UksVisit[]>(STORAGE_KEYS.UKS_VISITS, INITIAL_UKS_VISITS),
   setUksVisits: (data: UksVisit[]) => setStorage(STORAGE_KEYS.UKS_VISITS, data),
@@ -1059,8 +761,18 @@ export const localDb = {
   getUksAssessments: () => getStorage<UksAssessment[]>(STORAGE_KEYS.UKS_ASSESSMENTS, INITIAL_UKS_ASSESSMENTS),
   setUksAssessments: (data: UksAssessment[]) => setStorage(STORAGE_KEYS.UKS_ASSESSMENTS, data),
 
-  getUksFollowUps: () => getStorage<UksFollowUp[]>(STORAGE_KEYS.UKS_FOLLOWUPS, INITIAL_UKS_FOLLOWUPS),
-  setUksFollowUps: (data: UksFollowUp[]) => setStorage(STORAGE_KEYS.UKS_FOLLOWUPS, data),
+  getUksFollowUps: () => {
+    const list = getStorage<UksFollowUp[]>(STORAGE_KEYS.UKS_FOLLOWUPS, INITIAL_UKS_FOLLOWUPS);
+    const cleaned = list.filter((f) => !f.id.startsWith('ufu-00'));
+    if (cleaned.length !== list.length) {
+      setStorage(STORAGE_KEYS.UKS_FOLLOWUPS, cleaned);
+    }
+    return cleaned;
+  },
+  setUksFollowUps: (data: UksFollowUp[]) => {
+    const cleaned = data.filter((f) => !f.id.startsWith('ufu-00'));
+    setStorage(STORAGE_KEYS.UKS_FOLLOWUPS, cleaned);
+  },
 
   getNotifications: () => getStorage<AppNotification[]>(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS),
   setNotifications: (data: AppNotification[]) => setStorage(STORAGE_KEYS.NOTIFICATIONS, data),

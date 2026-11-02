@@ -34,6 +34,7 @@ import { UserManagement } from './components/master/UserManagement';
 import { AuditLogViewer } from './components/master/AuditLogViewer';
 import { SupabaseSetupGuide } from './components/master/SupabaseSetupGuide';
 import { ReportsPage } from './components/reports/ReportsPage';
+import { FollowUpsManagement } from './components/common/FollowUpsManagement';
 import { UserProfile, UserRole } from './types/database';
 import { DataService } from './services/dataService';
 
@@ -181,7 +182,7 @@ function MainApp() {
       // Shared / General Tabs
       case 'follow_ups':
       case 'my_followups':
-        return <GlucoseExamList onOpenRegister={() => setActiveTab('glucose_register')} />;
+        return <FollowUpsManagement onOpenRegister={() => setActiveTab('glucose_register')} />;
       case 'reports':
         return <ReportsPage />;
       case 'reports_by_unit':

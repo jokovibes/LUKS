@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Shield,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DataService } from '../../services/dataService';
@@ -37,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotifications,
   onOpenSupabaseGuide,
 }) => {
-  const { currentUser, role, logout } = useAuth();
+  const { currentUser, role, logout, clearLocalStorageAndLogout } = useAuth();
   const [wibTime, setWibTime] = useState<string>('');
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -221,6 +222,19 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <Database className="w-4 h-4 text-blue-700" />
                     Status Supabase & SQL Schema
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      if (window.confirm('Bersihkan local storage dan reset seluruh sesi ke halaman login?')) {
+                        clearLocalStorageAndLogout();
+                      }
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs text-amber-700 hover:bg-amber-50 rounded-lg flex items-center gap-2 font-medium"
+                  >
+                    <Trash2 className="w-4 h-4 text-amber-600" />
+                    Hapus Local Storage & Reset
                   </button>
 
                   <button

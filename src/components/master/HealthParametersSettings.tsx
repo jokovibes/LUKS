@@ -17,10 +17,13 @@ import {
   UserCheck,
   Edit2,
   Trash2,
+  Plus,
+  X,
+  Sliders,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DataService } from '../../services/dataService';
-import { HealthClassificationParameter } from '../../types/database';
+import { HealthClassificationParameter, GlucoseExamType, GlucoseUnit } from '../../types/database';
 
 export const HealthParametersSettings: React.FC = () => {
   const { currentUser } = useAuth();
@@ -55,12 +58,132 @@ export const HealthParametersSettings: React.FC = () => {
   // Parameters
   const params = React.useMemo(() => DataService.getHealthParameters(), [reloadKey]);
 
-  // Approval Modal state
-  const [selectedParam, setSelectedParam] = useState<HealthClassificationParameter | null>(null);
-  const [approverName, setApproverName] = useState('dr. Hendra Wijaya, Sp.PD, M.Kes');
-  const [approverTitle, setApproverTitle] = useState('Dokter Konsultan Medis UKS Lazuardi');
-  const [versionString, setVersionString] = useState(`V${new Date().getFullYear()}.2-RESMI`);
+  // Modal State for Add & Edit Parameter
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingParam, setEditingParam] = useState<HealthClassificationParameter | null>(null);
+
+  // Form Fields
+  const [examType, setExamType] = useState<GlucoseExamType>('puasa');
+  const [resultUnit, setResultUnit] = useState<GlucoseUnit>('mg/dL');
+  const [normalMin, setNormalMin] = useState<string>('70');
+  const [normalMax, setNormalMax] = useState<string>('100');
+  const [perluMin, setPerluMin] = useState<string>('101');
+  const [perluMax, setPerluMax] = useState<string>('125');
+  const [tindakLanjutMin, setTindakLanjutMin] = useState<string>('126');
+  const [catatanPedoman, setCatatanPedoman] = useState<string>('Standar acuan konsensus medis UKS Lazuardi');
+  const [approverName, setApproverName] = useState<string>('dr. Hendra Wijaya, Sp.PD, M.Kes');
+  const [approverTitle, setApproverTitle] = useState<string>('Dokter Konsultan Medis UKS Lazuardi');
+  const [versionString, setVersionString] = useState<string>(`V${new Date().getFullYear()}.2-RESMI`);
+  const [isActive, setIsActive] = useState<boolean>(true);
+
+  // Delete confirmation
   const [paramToDelete, setParamToDelete] = useState<HealthClassificationParameter | null>(null);
+
+  const handleOpenAdd = () => {
+    setEditingParam(null);
+    setExamType('puasa');
+    setResultUnit('mg/dL');
+    setNormalMin('70');
+    setNormalMax('100');
+    setPerluMin('101');
+    setPerluMax('125');
+    setTindakLanjutMin('126');
+    setCatatanPedoman('Standar acuan konsensus medis UKS Lazuardi');
+    setApproverName('dr. Hendra Wijaya, Sp.PD, M.Kes');
+    setApproverTitle('Dokter Konsultan Medis UKS Lazuardi');
+    setVersionString(`V${new Date().getFullYear()}.${params.length + 1}-RESMI`);
+    setIsActive(true);
+    setErrorMessage(null);
+    setIsEditorOpen(true);
+  };
+
+  const handleOpenEdit = (param: HealthClassificationParameter) => {
+    setEditingParam(param);
+    setExamType(param.examination_type);
+    setResultUnit(param.result_unit);
+    setNormalMin(String(param.parameter_configuration?.normal_min ?? 70));
+    setNormalMax(String(param.parameter_configuration?.normal_max ?? 100));
+    setPerluMin(String(param.parameter_configuration?.perlu_perhatian_min ?? 101));
+    setPerluMax(String(param.parameter_configuration?.perlu_perhatian_max ?? 125));
+    setTindakLanjutMin(String(param.parameter_configuration?.tindak_lanjut_min ?? 126));
+    setCatatanPedoman(param.parameter_configuration?.catatan_pedoman || '');
+    setApproverName(param.approved_by || 'dr. Hendra Wijaya, Sp.PD, M.Kes');
+    setApproverTitle(param.approved_by_title || 'Dokter Konsultan Medis UKS Lazuardi');
+    setVersionString(param.version || `V${new Date().getFullYear()}.1-RESMI`);
+    setIsActive(param.is_active);
+    setErrorMessage(null);
+    setIsEditorOpen(true);
+  };
+
+  const handleSaveParameter = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    const nMin = parseFloat(normalMin);
+    const nMax = parseFloat(normalMax);
+    const pMin = parseFloat(perluMin);
+    const pMax = parseFloat(perluMax);
+    const tMin = parseFloat(tindakLanjutMin);
+
+    if (isNaN(nMin) || isNaN(nMax) || isNaN(pMin) || isNaN(pMax) || isNaN(tMin)) {
+      setErrorMessage('Semua nilai ambang batas rentang harus berupa angka yang valid.');
+      return;
+    }
+
+    if (nMin >= nMax) {
+      setErrorMessage('Nilai minimum rentang Normal harus lebih kecil dari nilai maksimum Normal.');
+      return;
+    }
+
+    if (pMin > pMax) {
+      setErrorMessage('Nilai minimum Perlu Perhatian harus lebih kecil atau sama dengan maksimum Perlu Perhatian.');
+      return;
+    }
+
+    if (tMin <= nMax) {
+      setErrorMessage('Ambang batas Tindak Lanjut harus lebih besar dari batas nilai normal.');
+      return;
+    }
+
+    const payload: Partial<HealthClassificationParameter> = {
+      id: editingParam ? editingParam.id : undefined,
+      examination_type: examType,
+      result_unit: resultUnit,
+      parameter_configuration: {
+        normal_min: nMin,
+        normal_max: nMax,
+        perlu_perhatian_min: pMin,
+        perlu_perhatian_max: pMax,
+        tindak_lanjut_min: tMin,
+        catatan_pedoman: catatanPedoman.trim(),
+      },
+      approved_by: approverName.trim() || 'dr. Hendra Wijaya, Sp.PD, M.Kes',
+      approved_by_title: approverTitle.trim() || 'Dokter Konsultan Medis UKS Lazuardi',
+      approved_at: new Date().toISOString(),
+      version: versionString.trim() || `V${new Date().getFullYear()}.1-RESMI`,
+      is_active: isActive,
+      effective_from: editingParam?.effective_from || new Date().toISOString().split('T')[0],
+    };
+
+    DataService.saveHealthParameter(payload, {
+      id: currentUser.id,
+      name: currentUser.full_name,
+      role: currentUser.role,
+    });
+
+    setIsEditorOpen(false);
+    setEditingParam(null);
+    setReloadKey((k) => k + 1);
+
+    const examLabel =
+      examType === 'puasa' ? 'GDP (Puasa)' : examType === 'sewaktu' ? 'GDS (Sewaktu)' : 'GD2PP (Setelah Makan)';
+    setSuccessMessage(
+      editingParam
+        ? `Parameter klasifikasi ${examLabel} versi ${versionString} berhasil diperbarui & disimpan ke database.`
+        : `Parameter klasifikasi baru ${examLabel} versi ${versionString} berhasil ditambahkan & disimpan ke database.`
+    );
+    setTimeout(() => setSuccessMessage(null), 4000);
+  };
 
   const handleSaveSystemSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,31 +214,6 @@ export const HealthParametersSettings: React.FC = () => {
         setSuccessMessage(null);
       }, 4000);
     }
-  };
-
-  const handleApproveParameter = (param: HealthClassificationParameter) => {
-    if (!currentUser) return;
-
-    DataService.saveHealthParameter(
-      {
-        ...param,
-        approved_by: approverName,
-        approved_by_title: approverTitle,
-        approved_at: new Date().toISOString(),
-        version: versionString,
-        is_active: true,
-      },
-      {
-        id: currentUser.id,
-        name: currentUser.full_name,
-        role: currentUser.role,
-      }
-    );
-
-    setSelectedParam(null);
-    setReloadKey((k) => k + 1);
-    setSuccessMessage(`Parameter klasifikasi ${param.examination_type} versi ${versionString} resmi disetujui & aktif.`);
-    setTimeout(() => setSuccessMessage(null), 3500);
   };
 
   const handleConfirmDeleteParam = () => {
@@ -176,86 +274,118 @@ export const HealthParametersSettings: React.FC = () => {
 
       {/* SECTION 1: Health Classification Parameters (Approved by Medical Authority) */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-blue-700" />
-            1. Parameter Klasifikasi Pemeriksaan Gula Darah (Standar Medis)
-          </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-blue-700" />
+              1. Parameter Klasifikasi Pemeriksaan Gula Darah (Standar Medis)
+            </h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Atur tipe pemeriksaan (GDP, GDS, GD2PP), rentang ambang normal, perhatian, dan tindak lanjut.
+            </p>
+          </div>
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Parameter Medis Baru</span>
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {params.map((param) => (
-            <div
-              key={param.id}
-              className={`p-4 rounded-2xl border-2 transition space-y-3 text-xs ${
-                param.is_active ? 'border-emerald-300 bg-emerald-50/20' : 'border-slate-200 bg-slate-50 opacity-70'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-xs uppercase text-slate-900">
-                  {param.examination_type === 'sewaktu'
-                    ? 'GDS (Sewaktu)'
-                    : param.examination_type === 'puasa'
-                    ? 'GDP (Puasa)'
-                    : 'GD2PP (Setelah Makan)'}
-                </span>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                    param.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  {param.is_active ? 'Aktif' : 'Non-Aktif'}
-                </span>
-              </div>
+        {params.length === 0 ? (
+          <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-500">
+            <Activity className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-xs font-semibold">Belum ada parameter klasifikasi medis.</p>
+            <p className="text-[11px] text-slate-400 mt-1">Klik tombol di atas untuk menambahkan parameter baru.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {params.map((param) => (
+              <div
+                key={param.id}
+                className={`p-4 rounded-2xl border-2 transition space-y-3 text-xs flex flex-col justify-between ${
+                  param.is_active ? 'border-emerald-300 bg-emerald-50/20' : 'border-slate-200 bg-slate-50 opacity-70'
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs uppercase text-slate-900 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                      {param.examination_type === 'sewaktu'
+                        ? 'GDS (Sewaktu)'
+                        : param.examination_type === 'puasa'
+                        ? 'GDP (Puasa)'
+                        : 'GD2PP (Setelah Makan)'}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                        param.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {param.is_active ? 'Aktif' : 'Non-Aktif'}
+                    </span>
+                  </div>
 
-              <div className="space-y-1.5 text-[11px] bg-white p-3 rounded-xl border border-slate-200 font-mono">
-                <div className="flex justify-between">
-                  <span className="text-emerald-700 font-bold">Normal:</span>
-                  <span>{param.parameter_configuration.normal_min} - {param.parameter_configuration.normal_max} {param.result_unit}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-amber-700 font-bold">Perlu Perhatian:</span>
-                  <span>{param.parameter_configuration.perlu_perhatian_min} - {param.parameter_configuration.perlu_perhatian_max} {param.result_unit}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-rose-700 font-bold">Tindak Lanjut:</span>
-                  <span>≥ {param.parameter_configuration.tindak_lanjut_min} {param.result_unit}</span>
-                </div>
-              </div>
+                  <div className="space-y-1.5 text-[11px] bg-white p-3 rounded-xl border border-slate-200 font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-emerald-700 font-bold">Normal:</span>
+                      <span>
+                        {param.parameter_configuration?.normal_min ?? 70} - {param.parameter_configuration?.normal_max ?? 100} {param.result_unit}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-amber-700 font-bold">Perlu Perhatian:</span>
+                      <span>
+                        {param.parameter_configuration?.perlu_perhatian_min ?? 101} - {param.parameter_configuration?.perlu_perhatian_max ?? 125} {param.result_unit}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-rose-700 font-bold">Tindak Lanjut:</span>
+                      <span>≥ {param.parameter_configuration?.tindak_lanjut_min ?? 126} {param.result_unit}</span>
+                    </div>
+                  </div>
 
-              <div className="text-[10px] text-slate-500 space-y-0.5 pt-1">
-                <div>
-                  <span className="font-semibold text-slate-700">Versi:</span> {param.version}
+                  <div className="text-[10px] text-slate-500 space-y-0.5 pt-1">
+                    <div>
+                      <span className="font-semibold text-slate-700">Versi:</span> {param.version}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-700">Disetujui Oleh:</span> {param.approved_by}
+                    </div>
+                    <div className="truncate text-slate-400">{param.approved_by_title}</div>
+                    <div>
+                      <span className="font-semibold text-slate-700">Tanggal:</span>{' '}
+                      {new Date(param.approved_at).toLocaleDateString('id-ID')}
+                    </div>
+                    {param.parameter_configuration?.catatan_pedoman && (
+                      <div className="text-[10px] italic text-slate-500 line-clamp-2 pt-0.5">
+                        "{param.parameter_configuration.catatan_pedoman}"
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <span className="font-semibold text-slate-700">Disetujui Oleh:</span> {param.approved_by}
-                </div>
-                <div className="truncate text-slate-400">{param.approved_by_title}</div>
-                <div>
-                  <span className="font-semibold text-slate-700">Tanggal:</span>{' '}
-                  {new Date(param.approved_at).toLocaleDateString('id-ID')}
-                </div>
-              </div>
 
-              <div className="flex items-center gap-1.5 pt-1">
-                <button
-                  onClick={() => setSelectedParam(param)}
-                  className="flex-1 py-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-lg text-[11px] transition shadow-2xs flex items-center justify-center gap-1"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  Ubah / Sahkan
-                </button>
-                <button
-                  onClick={() => setParamToDelete(param)}
-                  className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition border border-slate-200 hover:border-rose-300"
-                  title="Hapus Parameter"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1.5 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => handleOpenEdit(param)}
+                    className="flex-1 py-1.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-lg text-[11px] transition shadow-2xs flex items-center justify-center gap-1.5"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit Parameter & Rentang</span>
+                  </button>
+                  <button
+                    onClick={() => setParamToDelete(param)}
+                    className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition border border-slate-200 hover:border-rose-300"
+                    title="Hapus Parameter"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* SECTION 2: Repeat Visit Detection Settings */}
@@ -332,71 +462,272 @@ export const HealthParametersSettings: React.FC = () => {
         </form>
       </div>
 
-      {/* Approval Modal */}
-      {selectedParam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+      {/* Modal: Tambah & Edit Parameter Klasifikasi Medis */}
+      {isEditorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8">
             <div className="px-6 py-4 bg-blue-900 text-white flex items-center justify-between">
-              <h3 className="font-bold text-sm">Formulir Persetujuan Tenaga Kesehatan</h3>
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <Sliders className="w-4 h-4 text-emerald-400" />
+                <span>
+                  {editingParam ? 'Edit Parameter Klasifikasi Medis' : 'Tambah Parameter Medis Baru'}
+                </span>
+              </div>
               <button
-                onClick={() => setSelectedParam(null)}
-                className="p-1 text-blue-200 hover:text-white rounded"
+                onClick={() => setIsEditorOpen(false)}
+                className="p-1 text-blue-200 hover:text-white rounded-lg transition"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 space-y-3.5 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Nama Dokter / Tenaga Medis Pengesah</label>
-                <input
-                  type="text"
-                  value={approverName}
-                  onChange={(e) => setApproverName(e.target.value)}
-                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5 font-semibold"
-                />
+            <form onSubmit={handleSaveParameter} className="p-6 space-y-4 text-xs">
+              {/* Type and Unit */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Jenis Pemeriksaan Gula Darah <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={examType}
+                    onChange={(e) => setExamType(e.target.value as GlucoseExamType)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 font-semibold bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  >
+                    <option value="puasa">GDP (Gula Darah Puasa)</option>
+                    <option value="sewaktu">GDS (Gula Darah Sewaktu)</option>
+                    <option value="setelah_makan">GD2PP (2 Jam Post Prandial / Setelah Makan)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Pilih tipe pemeriksaan medis yang diatur.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Satuan Hasil <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={resultUnit}
+                    onChange={(e) => setResultUnit(e.target.value as GlucoseUnit)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 font-semibold bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  >
+                    <option value="mg/dL">mg/dL (Standar Indonesia)</option>
+                    <option value="mmol/L">mmol/L</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Satuan standar pengukuran di UKS.
+                  </p>
+                </div>
+              </div>
+
+              {/* Range Configuration Box */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-blue-700" />
+                  <span>Konfigurasi Ambang Batas Medis ({resultUnit})</span>
+                </div>
+
+                {/* Normal Range */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-emerald-700 block mb-1">
+                      Normal Minimum
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        required
+                        value={normalMin}
+                        onChange={(e) => setNormalMin(e.target.value)}
+                        className="w-full text-xs border border-slate-300 rounded-lg p-2 font-mono font-bold bg-white"
+                      />
+                      <span className="absolute right-2.5 top-2 text-[10px] text-slate-400 font-mono">
+                        {resultUnit}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-emerald-700 block mb-1">
+                      Normal Maksimum
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        required
+                        value={normalMax}
+                        onChange={(e) => setNormalMax(e.target.value)}
+                        className="w-full text-xs border border-slate-300 rounded-lg p-2 font-mono font-bold bg-white"
+                      />
+                      <span className="absolute right-2.5 top-2 text-[10px] text-slate-400 font-mono">
+                        {resultUnit}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Perlu Perhatian Range */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-amber-700 block mb-1">
+                      Perlu Perhatian Min
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        required
+                        value={perluMin}
+                        onChange={(e) => setPerluMin(e.target.value)}
+                        className="w-full text-xs border border-slate-300 rounded-lg p-2 font-mono font-bold bg-white"
+                      />
+                      <span className="absolute right-2.5 top-2 text-[10px] text-slate-400 font-mono">
+                        {resultUnit}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-amber-700 block mb-1">
+                      Perlu Perhatian Maks
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        required
+                        value={perluMax}
+                        onChange={(e) => setPerluMax(e.target.value)}
+                        className="w-full text-xs border border-slate-300 rounded-lg p-2 font-mono font-bold bg-white"
+                      />
+                      <span className="absolute right-2.5 top-2 text-[10px] text-slate-400 font-mono">
+                        {resultUnit}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tindak Lanjut Range */}
+                <div>
+                  <label className="font-semibold text-rose-700 block mb-1">
+                    Ambang Tindak Lanjut Medis (Nilai ≥ Batas Ini)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={tindakLanjutMin}
+                      onChange={(e) => setTindakLanjutMin(e.target.value)}
+                      className="w-full text-xs border border-slate-300 rounded-lg p-2 font-mono font-bold bg-white text-rose-700"
+                    />
+                    <span className="absolute right-2.5 top-2 text-[10px] text-slate-400 font-mono">
+                      {resultUnit}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Peserta dengan hasil gula darah di atas atau sama dengan nilai ini akan dikategorikan butuh rujukan / tindak lanjut.
+                  </p>
+                </div>
+              </div>
+
+              {/* Medical Authority & Version */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Dokter / Tenaga Medis Pengesah <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={approverName}
+                    onChange={(e) => setApproverName(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 font-semibold bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Jabatan / Kompetensi Nakes <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={approverTitle}
+                    onChange={(e) => setApproverTitle(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Nomor Versi Pedoman <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={versionString}
+                    onChange={(e) => setVersionString(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 font-mono bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Status Parameter
+                  </label>
+                  <div className="h-10 flex items-center">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isActive}
+                        onChange={(e) => setIsActive(e.target.checked)}
+                        className="w-4 h-4 text-emerald-600 rounded-sm border-slate-300 focus:ring-emerald-500"
+                      />
+                      <span className="font-semibold text-slate-800">
+                        {isActive ? 'Aktif (Digunakan untuk klasifikasi)' : 'Non-Aktif (Disimpan sementara)'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Jabatan / Kompetensi Tenaga Kesehatan</label>
-                <input
-                  type="text"
-                  value={approverTitle}
-                  onChange={(e) => setApproverTitle(e.target.value)}
-                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Nomor Versi Parameter</label>
-                <input
-                  type="text"
-                  value={versionString}
-                  onChange={(e) => setVersionString(e.target.value)}
-                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5 font-mono"
+                <label className="font-bold text-slate-700 block mb-1">
+                  Catatan / Pedoman Klinis Acuan
+                </label>
+                <textarea
+                  rows={2}
+                  value={catatanPedoman}
+                  onChange={(e) => setCatatanPedoman(e.target.value)}
+                  placeholder="Contoh: Konsensus PERKENI / ADA untuk skrining populasi sekolah."
+                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white"
                 />
               </div>
 
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900 leading-relaxed">
-                Dengan menyetujui parameter ini, Anda mengesahkan bahwa ambang batas pemeriksaan gula darah tersebut telah sesuai dengan konsensus medis resmi dan dapat dijadikan acuan skrining UKS Lazuardi.
+                Parameter ini akan tersimpan ke database dan secara otomatis dijadikan rujukan penghitungan klasifikasi pemeriksaan gula darah UKS.
               </div>
-            </div>
 
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
-              <button
-                onClick={() => setSelectedParam(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl"
-              >
-                Batal
-              </button>
-              <button
-                onClick={() => handleApproveParameter(selectedParam)}
-                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-              >
-                <FileCheck className="w-4 h-4" />
-                Sahkan & Aktifkan Parameter
-              </button>
-            </div>
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditorOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <FileCheck className="w-4 h-4" />
+                  <span>{editingParam ? 'Simpan Perubahan Parameter' : 'Tambahkan & Sahkan Parameter'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

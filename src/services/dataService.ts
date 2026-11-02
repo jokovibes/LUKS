@@ -757,6 +757,55 @@ export class DataService {
     return followUps;
   }
 
+  static saveUksFollowUp(
+    followUp: Partial<UksFollowUp>,
+    actor: { id: string; name: string; role: string }
+  ): UksFollowUp {
+    const list = localDb.getUksFollowUps();
+    const idx = list.findIndex((f) => f.id === followUp.id);
+    let result: UksFollowUp;
+    if (idx >= 0) {
+      result = { ...list[idx], ...followUp, updated_at: new Date().toISOString() } as UksFollowUp;
+      list[idx] = result;
+      this.logAudit(actor, 'UPDATE_RECORD', 'uks_visits', result.id, { follow_up: true });
+    } else {
+      result = {
+        id: followUp.id || `ufu-${Date.now()}`,
+        visit_id: followUp.visit_id!,
+        responsible_staff_id: actor.id,
+        responsible_staff_name: actor.name,
+        follow_up_status: followUp.follow_up_status || 'sedang_dipantau',
+        scheduled_date: followUp.scheduled_date,
+        parent_or_contact_called_at: followUp.parent_or_contact_called_at,
+        contact_person: followUp.contact_person,
+        pickup_person: followUp.pickup_person,
+        pickup_contact: followUp.pickup_contact,
+        approval_person: followUp.approval_person,
+        referral_destination: followUp.referral_destination,
+        handover_notes: followUp.handover_notes || '',
+        completed_at: followUp.completed_at,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      list.unshift(result);
+      this.logAudit(actor, 'CREATE_RECORD', 'uks_visits', result.id, { follow_up: true });
+    }
+    localDb.setUksFollowUps(list);
+    SupabaseSyncService.upsertRecord('uks_follow_ups', result);
+    return result;
+  }
+
+  static deleteUksFollowUp(id: string, actor: { id: string; name: string; role: string }): boolean {
+    const list = localDb.getUksFollowUps();
+    const target = list.find((f) => f.id === id);
+    if (!target) return false;
+    const remaining = list.filter((f) => f.id !== id);
+    localDb.setUksFollowUps(remaining);
+    this.logAudit(actor, 'DELETE_RECORD', 'uks_visits', id, { follow_up_deleted: true });
+    SupabaseSyncService.deleteRecord('uks_follow_ups', id);
+    return true;
+  }
+
   static getAllFollowUps(currentUser: UserProfile): Array<{
     id: string;
     source: 'glucose' | 'visit';

@@ -257,31 +257,34 @@ class SupabaseSyncServiceClass {
     await supabase.from('system_settings').upsert(settingsPayload, { onConflict: 'id' });
 
     // 6. Glucose Exams
-    const examsPayload = INITIAL_GLUCOSE_EXAMINATIONS.map((e) => ({
-      id: ensureUuid(e.id),
-      examination_number: e.examination_number,
-      participant_id: ensureUuid(e.participant_id),
-      examination_datetime: e.examination_datetime,
-      examination_type: e.examination_type,
-      last_meal_datetime: e.last_meal_datetime || null,
-      fasting_duration_hours: e.fasting_duration_hours || null,
-      result_value: e.result_value,
-      result_unit: e.result_unit,
-      symptoms: e.symptoms || null,
-      participant_condition: e.participant_condition || null,
-      examiner_id: ensureUuid(e.examiner_id),
-      examiner_name: e.examiner_name,
-      device_name: e.device_name || null,
-      attachment_path: e.attachment_path || null,
-      notes: e.notes || null,
-      classification: e.classification,
-      classification_parameter_version: e.classification_parameter_version || null,
-      consent_status: e.consent_status,
-      record_status: e.record_status,
-      created_at: e.created_at,
-      updated_at: e.updated_at,
-    }));
-    await supabase.from('glucose_examinations').upsert(examsPayload, { onConflict: 'id' });
+    // 6. Glucose Examinations (Hanya jika ada initial data)
+    if (INITIAL_GLUCOSE_EXAMINATIONS.length > 0) {
+      const examsPayload = INITIAL_GLUCOSE_EXAMINATIONS.map((e) => ({
+        id: ensureUuid(e.id),
+        examination_number: e.examination_number,
+        participant_id: ensureUuid(e.participant_id),
+        examination_datetime: e.examination_datetime,
+        examination_type: e.examination_type,
+        last_meal_datetime: e.last_meal_datetime || null,
+        fasting_duration_hours: e.fasting_duration_hours || null,
+        result_value: e.result_value,
+        result_unit: e.result_unit,
+        symptoms: e.symptoms || null,
+        participant_condition: e.participant_condition || null,
+        examiner_id: ensureUuid(e.examiner_id),
+        examiner_name: e.examiner_name,
+        device_name: e.device_name || null,
+        attachment_path: e.attachment_path || null,
+        notes: e.notes || null,
+        classification: e.classification,
+        classification_parameter_version: e.classification_parameter_version || null,
+        consent_status: e.consent_status,
+        record_status: e.record_status,
+        created_at: e.created_at,
+        updated_at: e.updated_at,
+      }));
+      await supabase.from('glucose_examinations').upsert(examsPayload, { onConflict: 'id' });
+    }
 
     // 7. Glucose Follow Ups
     if (INITIAL_GLUCOSE_FOLLOWUPS.length > 0) {
@@ -438,11 +441,11 @@ class SupabaseSyncServiceClass {
         localDb.setHealthParams(healthParams as HealthClassificationParameter[]);
         count += healthParams.length;
       }
-      if (exams && exams.length > 0) {
+      if (exams) {
         localDb.setGlucoseExams(exams as GlucoseExamination[]);
         count += exams.length;
       }
-      if (examFollowUps && examFollowUps.length > 0) {
+      if (examFollowUps) {
         localDb.setGlucoseFollowUps(examFollowUps as GlucoseFollowUp[]);
         count += examFollowUps.length;
       }
@@ -454,7 +457,7 @@ class SupabaseSyncServiceClass {
         localDb.setUksAssessments(assessments as UksAssessment[]);
         count += assessments.length;
       }
-      if (visitFollowUps && visitFollowUps.length > 0) {
+      if (visitFollowUps) {
         localDb.setUksFollowUps(visitFollowUps as UksFollowUp[]);
         count += visitFollowUps.length;
       }
@@ -499,6 +502,10 @@ class SupabaseSyncServiceClass {
 
     try {
       const sanitized = { ...record };
+      delete sanitized.participant;
+      delete sanitized.examination;
+      delete sanitized.visit;
+      delete sanitized.source;
       if (sanitized.id) sanitized.id = ensureUuid(sanitized.id);
 
       // Foreign key sanitize
