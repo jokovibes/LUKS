@@ -1,0 +1,6 @@
+{
+  "name": "Lazuardi UKS Management System (LUKS)",
+  "description": "Sistem Informasi UKS Terintegrasi untuk Pemeriksaan Gula Darah, Kunjungan UKS, Penanganan, dan Tindak Lanjut Kesehatan Lazuardi Global Compassionate School.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

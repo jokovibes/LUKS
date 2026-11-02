@@ -1,0 +1,526 @@
+/**
+ * Master Data Karyawan & Guru - LUKS
+ */
+
+import React, { useState } from 'react';
+import {
+  Users,
+  Search,
+  Plus,
+  Edit2,
+  Trash2,
+  AlertTriangle,
+  CheckCircle2,
+  X,
+  Save,
+  Phone,
+  Briefcase,
+  Upload,
+  Download,
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { DataService } from '../../services/dataService';
+import { CsvService } from '../../services/csvService';
+import { CsvImportModal } from '../common/CsvImportModal';
+import { UserProfile, SchoolUnit, UserRole } from '../../types/database';
+
+export const EmployeesManagement: React.FC = () => {
+  const { currentUser } = useAuth();
+  const [reloadKey, setReloadKey] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUnitId, setSelectedUnitId] = useState('');
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<UserProfile | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<UserProfile | null>(null);
+
+  // Form State
+  const [fullName, setFullName] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
+  const [email, setEmail] = useState('');
+  const [gender, setGender] = useState<'L' | 'P'>('L');
+  const [unitId, setUnitId] = useState('');
+  const [workUnit, setWorkUnit] = useState('');
+  const [role, setRole] = useState<'karyawan' | 'petugas_uks' | 'admin' | 'pimpinan'>('karyawan');
+  const [contact, setContact] = useState('');
+
+  const units = DataService.getUnits();
+  const employees = React.useMemo(() => {
+    return DataService.getProfiles('karyawan')
+      .concat(DataService.getProfiles('petugas_uks'))
+      .concat(DataService.getProfiles('admin'))
+      .concat(DataService.getProfiles('pimpinan'));
+  }, [reloadKey]);
+
+  const filtered = employees.filter((e) => {
+    if (selectedUnitId && e.unit_id !== selectedUnitId) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase().trim();
+      return (
+        e.full_name.toLowerCase().includes(q) ||
+        e.employee_or_student_id.toLowerCase().includes(q) ||
+        (e.work_unit && e.work_unit.toLowerCase().includes(q))
+      );
+    }
+    return true;
+  });
+
+  const handleOpenAdd = () => {
+    setEditingEmployee(null);
+    setFullName('');
+    setEmployeeId(`NIY-${new Date().getFullYear()}.${Math.floor(10 + Math.random() * 89)}.${Math.floor(100 + Math.random() * 899)}`);
+    setEmail('');
+    setGender('L');
+    setUnitId(units[0]?.id || '');
+    setWorkUnit('Guru Mata Pelajaran');
+    setRole('karyawan');
+    setContact('');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (emp: UserProfile) => {
+    setEditingEmployee(emp);
+    setFullName(emp.full_name);
+    setEmployeeId(emp.employee_or_student_id);
+    setEmail(emp.email);
+    setGender(emp.gender);
+    setUnitId(emp.unit_id);
+    setWorkUnit(emp.work_unit || '');
+    setRole(emp.role as any);
+    setContact(emp.contact_information || '');
+    setIsModalOpen(true);
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    DataService.saveProfile(
+      {
+        id: editingEmployee ? editingEmployee.id : `user-emp-${Date.now()}`,
+        email: email || `${employeeId.toLowerCase().replace(/[^a-z0-9]/g, '')}@lazuardi.sch.id`,
+        employee_or_student_id: employeeId,
+        full_name: fullName,
+        role,
+        category: 'karyawan',
+        unit_id: unitId,
+        work_unit: workUnit,
+        gender,
+        contact_information: contact,
+        is_active: true,
+        created_at: editingEmployee ? editingEmployee.created_at : new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: currentUser.id,
+        name: currentUser.full_name,
+        role: currentUser.role,
+      }
+    );
+
+    setIsModalOpen(false);
+    setReloadKey((k) => k + 1);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!employeeToDelete || !currentUser) return;
+    DataService.deleteProfile(employeeToDelete.id, {
+      id: currentUser.id,
+      name: currentUser.full_name,
+      role: currentUser.role,
+    });
+    setEmployeeToDelete(null);
+    setReloadKey((k) => k + 1);
+  };
+
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+
+  const handleImportEmployees = (rows: string[][]) => {
+    let successCount = 0;
+    const errors: string[] = [];
+    const allUnits = DataService.getUnits();
+    const unitMapByCode = new Map(allUnits.map((u) => [u.unit_code.toUpperCase(), u.id]));
+
+    rows.forEach((row, idx) => {
+      const lineNum = idx + 2;
+      const empName = row[0]?.trim();
+      const niy = row[1]?.trim().toUpperCase();
+      const empEmail = row[2]?.trim().toLowerCase();
+      const roleRaw = row[3]?.trim().toLowerCase();
+      const unitCode = row[4]?.trim().toUpperCase();
+      const position = row[5]?.trim();
+      const genderRaw = row[6]?.trim().toUpperCase();
+      const phone = row[7]?.trim();
+      const emgContact = row[8]?.trim();
+      const emgPhone = row[9]?.trim();
+
+      if (!empName) {
+        errors.push(`Baris ${lineNum}: Nama karyawan wajib diisi.`);
+        return;
+      }
+
+      const validRoles: UserRole[] = ['karyawan', 'petugas_uks', 'admin', 'pimpinan'];
+      const assignedRole: UserRole = validRoles.includes(roleRaw as UserRole) ? (roleRaw as UserRole) : 'karyawan';
+      const assignedUnitId = unitMapByCode.get(unitCode) || allUnits[0]?.id || '';
+
+      const empId = niy || `NIY-${new Date().getFullYear()}${Math.floor(1000 + Math.random() * 9000)}`;
+      const email = empEmail || `${empId.toLowerCase().replace(/[^a-z0-9]/g, '')}@lazuardi.sch.id`;
+
+      const existing = employees.find((p) => p.employee_or_student_id === empId || p.email.toLowerCase() === email);
+
+      if (currentUser) {
+        DataService.saveProfile(
+          {
+            id: existing ? existing.id : `user-emp-csv-${Date.now()}-${idx}`,
+            full_name: empName,
+            employee_or_student_id: empId,
+            email: email,
+            role: assignedRole,
+            category: 'karyawan',
+            unit_id: assignedUnitId,
+            work_unit: position || undefined,
+            gender: genderRaw === 'P' ? 'P' : 'L',
+            contact_information: phone || undefined,
+            emergency_contact: emgContact || undefined,
+            emergency_phone: emgPhone || undefined,
+            is_active: true,
+          },
+          {
+            id: currentUser.id,
+            name: currentUser.full_name,
+            role: currentUser.role,
+          }
+        );
+        successCount++;
+      }
+    });
+
+    setReloadKey((k) => k + 1);
+    return { successCount, errors };
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-purple-900 font-extrabold text-lg">
+            <Users className="w-5 h-5 text-purple-700" />
+            <span>Manajemen Data Guru & Karyawan</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Data tenaga pendidik dan kependidikan Lazuardi Global Compassionate School.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => CsvService.downloadEmployeeTemplateCsv()}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition border border-slate-300"
+            title="Unduh contoh template CSV data guru & karyawan"
+          >
+            <Download className="w-4 h-4 text-slate-600" />
+            Format CSV
+          </button>
+          <button
+            onClick={() => setIsCsvModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
+          >
+            <Upload className="w-4 h-4" />
+            Import CSV Karyawan
+          </button>
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center gap-1.5 px-4 py-2 bg-purple-900 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            Tambah Karyawan Baru
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <input
+            type="text"
+            placeholder="Cari nama karyawan, NIY, atau unit kerja..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
+          />
+        </div>
+
+        <div className="w-56">
+          <select
+            value={selectedUnitId}
+            onChange={(e) => setSelectedUnitId(e.target.value)}
+            className="w-full text-xs border border-slate-300 rounded-xl p-2 bg-white"
+          >
+            <option value="">Semua Unit Sekolah</option>
+            {units.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.unit_code} - {u.unit_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-bold text-[11px]">
+              <tr>
+                <th className="py-3.5 px-4">NIY</th>
+                <th className="py-3.5 px-4">Nama Lengkap</th>
+                <th className="py-3.5 px-4">Unit Kerja & Penugasan</th>
+                <th className="py-3.5 px-4">Hak Akses Role</th>
+                <th className="py-3.5 px-4">Kontak Telepon</th>
+                <th className="py-3.5 px-4 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-medium">
+              {filtered.map((emp) => (
+                <tr key={emp.id} className="hover:bg-slate-50 transition">
+                  <td className="py-3.5 px-4 font-mono font-bold text-purple-950">
+                    {emp.employee_or_student_id}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <div className="font-bold text-slate-900">{emp.full_name}</div>
+                    <div className="text-[10px] text-slate-400">{emp.email}</div>
+                  </td>
+                  <td className="py-3.5 px-4 text-slate-700">{emp.work_unit || '-'}</td>
+                  <td className="py-3.5 px-4">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-800">
+                      {emp.role.replace(/_/g, ' ')}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
+                    {emp.contact_information || '-'}
+                  </td>
+                  <td className="py-3.5 px-4 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => handleOpenEdit(emp)}
+                        className="p-1.5 hover:bg-purple-50 text-purple-700 rounded-lg transition"
+                        title="Ubah Data Karyawan"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setEmployeeToDelete(emp)}
+                        className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition"
+                        title="Hapus Data Karyawan"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal Add / Edit */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+            <div className="px-6 py-4 bg-purple-950 text-white flex items-center justify-between">
+              <h3 className="font-bold text-sm">
+                {editingEmployee ? 'Ubah Data Karyawan' : 'Tambah Karyawan Baru'}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 text-purple-200 hover:text-white rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSave} className="p-6 space-y-3.5 text-xs overflow-y-auto max-h-[80vh]">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Nama Lengkap & Gelar *</label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Contoh: Budi Santoso, M.Pd"
+                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Nomor Induk Yayasan (NIY) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
+                    className="w-full text-xs font-mono font-bold border border-slate-300 rounded-xl p-2.5"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Jenis Kelamin</label>
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as any)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white"
+                  >
+                    <option value="L">Laki-laki</option>
+                    <option value="P">Perempuan</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Unit Kerja / Jabatan</label>
+                <input
+                  type="text"
+                  value={workUnit}
+                  onChange={(e) => setWorkUnit(e.target.value)}
+                  placeholder="Contoh: Guru Fisika SMA, Petugas UKS, Staff TU..."
+                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Unit Penempatan</label>
+                  <select
+                    value={unitId}
+                    onChange={(e) => setUnitId(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white"
+                  >
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.unit_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Role Sistem</label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as any)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white font-semibold"
+                  >
+                    <option value="karyawan">Karyawan / Guru Biasa</option>
+                    <option value="petugas_uks">Petugas UKS</option>
+                    <option value="admin">Administrator</option>
+                    <option value="pimpinan">Pimpinan Sekolah</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Nomor Kontak Telepon / WA</label>
+                <input
+                  type="text"
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value)}
+                  placeholder="0812-xxxx-xxxx"
+                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5 font-mono"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-purple-900 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <Save className="w-4 h-4" />
+                  Simpan Karyawan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus Karyawan */}
+      {employeeToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-rose-200 overflow-hidden flex flex-col p-6 space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-900">Konfirmasi Hapus Guru/Karyawan</h3>
+                <p className="text-[11px] text-slate-500">Master Data Karyawan</p>
+              </div>
+            </div>
+
+            <div className="bg-rose-50/60 p-3.5 rounded-xl border border-rose-200 text-slate-700 space-y-1.5">
+              <p>Apakah Anda yakin ingin menghapus data karyawan berikut?</p>
+              <div className="font-bold text-slate-900">{employeeToDelete.full_name}</div>
+              <div className="text-[11px] font-mono text-slate-600">
+                NIY/NIP: {employeeToDelete.employee_or_student_id} • Unit: {employeeToDelete.work_unit || '-'}
+              </div>
+              <p className="text-[10px] text-rose-700 font-semibold pt-1">
+                Data profil ini akan dihapus dari sistem. Tindakan ini dicatat dalam jejak audit administrator.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setEmployeeToDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Ya, Hapus Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Import Modal Karyawan */}
+      <CsvImportModal
+        isOpen={isCsvModalOpen}
+        onClose={() => setIsCsvModalOpen(false)}
+        title="Import Data Guru & Karyawan Massal (CSV)"
+        description="Unggah berkas CSV untuk mendaftarkan banyak guru dan karyawan sekolah sekaligus beserta NIY, unit kerja, dan peran."
+        expectedHeaders={[
+          'Nama Lengkap',
+          'NIY',
+          'Email',
+          'Role',
+          'Kode Unit (TK/SD/SMP/SMA)',
+          'Unit Kerja',
+          'Jenis Kelamin (L/P)',
+          'No Telepon',
+          'Kontak Darurat',
+          'HP Darurat',
+        ]}
+        sampleDownloadFn={() => CsvService.downloadEmployeeTemplateCsv()}
+        sampleDownloadLabel="Unduh Contoh Format CSV Guru & Karyawan"
+        onImport={handleImportEmployees}
+        onSuccess={() => setReloadKey((k) => k + 1)}
+      />
+    </div>
+  );
+};

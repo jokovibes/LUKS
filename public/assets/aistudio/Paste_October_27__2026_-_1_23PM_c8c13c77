@@ -1,0 +1,883 @@
+Buat sebuah aplikasi web full-stack bernama **Lazuardi UKS Management System (LUKS)**, yaitu sistem informasi Unit Kesehatan Sekolah (UKS) terintegrasi untuk mengelola pemeriksaan gula darah siswa dan karyawan serta pencatatan kunjungan, pemeriksaan, penanganan, dan tindak lanjut kesehatan di lingkungan sekolah Lazuardi Global Compassionate School.
+
+Aplikasi harus memiliki tampilan modern, profesional, responsif, mudah digunakan oleh petugas UKS, serta dapat diakses melalui komputer, tablet, dan smartphone. Gunakan Bahasa Indonesia untuk seluruh antarmuka aplikasi, termasuk menu, formulir, notifikasi, laporan, dan pesan kesalahan.
+
+Aplikasi bukan sekadar prototype atau tampilan statis. Buat sistem yang benar-benar berfungsi dengan database, autentikasi, otorisasi, validasi formulir, pencatatan transaksi, pencarian data, filter, dashboard dinamis, serta laporan yang dapat diunduh.
+
+# 1. TEKNOLOGI YANG DIGUNAKAN
+
+Gunakan teknologi berikut:
+
+- Frontend: React, TypeScript, dan Vite.
+- UI: Tailwind CSS dengan komponen UI yang konsisten dan profesional.
+- Ikon: Lucide React.
+- Grafik: Recharts.
+- Backend dan database: Supabase (PostgreSQL).
+- Authentication: Supabase Auth.
+- Penyimpanan foto dan dokumen: Supabase Storage dengan akses privat.
+- Tanggal dan waktu: gunakan zona waktu Asia/Jakarta (WIB).
+- Laporan: ekspor Excel (.xlsx) dan PDF.
+- QR Code: mendukung pemindaian QR Code identitas siswa atau karyawan menggunakan kamera perangkat.
+- Notifikasi: notifikasi dalam aplikasi dan pengingat jadwal tindak lanjut.
+
+Gunakan environment variables untuk konfigurasi, seperti VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY. Jangan menempatkan service role key, password database, atau secret key di frontend maupun repository publik.
+
+Jika menggunakan Supabase, buat SQL schema, relasi antartabel, indeks, kebijakan Row Level Security (RLS), dan petunjuk konfigurasi yang dibutuhkan. Jangan hanya membuat data contoh tanpa mengimplementasikan penyimpanan data sebenarnya.
+
+# 2. SISTEM LOGIN DAN HAK AKSES
+
+Buat halaman login profesional dengan logo sekolah, nama aplikasi, email atau username sesuai implementasi autentikasi, dan password. Sediakan fungsi logout, pengaturan profil, perubahan password, serta pemulihan password jika didukung.
+
+Terapkan lima jenis role berikut.
+
+## A. Administrator
+Hak akses:
+- Mengelola akun pengguna.
+- Menambahkan, mengubah, menonaktifkan, dan mengatur role pengguna.
+- Mengelola data siswa dan karyawan.
+- Mengelola unit, kelas, kategori, dan data master.
+- Mengatur konfigurasi sistem, batas kunjungan berulang, dan pengaturan notifikasi.
+- Mengatur parameter klasifikasi hasil pemeriksaan yang telah disetujui tenaga kesehatan berwenang.
+- Mengakses dashboard dan laporan sesuai kewenangan.
+- Mengakses audit log untuk aktivitas administrasi.
+- Mengelola konfigurasi aplikasi dan integrasi yang diperlukan.
+
+Akses administrator terhadap catatan kesehatan harus dapat dikonfigurasi secara terpisah. Hak administrator teknis tidak otomatis memberikan hak untuk membaca seluruh detail medis. Berikan akses berdasarkan kebutuhan tugas dan kewenangan yang disetujui sekolah.
+
+## B. Petugas UKS
+Hak akses:
+- Mengakses dashboard UKS.
+- Mencatat pemeriksaan gula darah siswa dan karyawan.
+- Mencatat kunjungan UKS.
+- Mengisi hasil pemeriksaan, tindakan, dan penanganan.
+- Mengunggah foto atau dokumen yang relevan.
+- Melihat riwayat kesehatan sesuai kewenangan.
+- Memperbarui status tindak lanjut.
+- Mengelola jadwal pemeriksaan ulang.
+- Melihat peringatan kunjungan berulang.
+- Membuat dan mengunduh laporan sesuai hak akses.
+
+## C. Karyawan
+Hak akses:
+- Melihat profil dan data identitas miliknya sendiri.
+- Melihat riwayat pemeriksaan gula darah miliknya sendiri.
+- Melihat riwayat kunjungan UKS miliknya sendiri sesuai kebijakan privasi.
+- Melihat jadwal pemeriksaan ulang dan tindak lanjut yang ditujukan kepadanya.
+- Memperbarui informasi kontak yang diizinkan.
+- Melihat notifikasi yang relevan.
+- Tidak dapat melihat data kesehatan karyawan lain atau data siswa.
+- Tidak dapat mengubah hasil pemeriksaan resmi atau catatan petugas.
+
+## D. Siswa
+Hak akses:
+- Melihat profil dan identitas miliknya sendiri.
+- Melihat riwayat pemeriksaan gula darah miliknya sendiri apabila diizinkan sekolah.
+- Melihat riwayat kunjungan UKS miliknya sendiri sesuai kebijakan sekolah dan ketentuan perlindungan anak.
+- Melihat informasi jadwal tindak lanjut yang sesuai untuk ditampilkan.
+- Tidak dapat melihat data siswa lain, data karyawan, catatan internal petugas, atau catatan komunikasi rahasia.
+- Tidak dapat mengubah hasil pemeriksaan atau catatan petugas.
+
+## E. Pimpinan
+Hak akses:
+- Melihat dashboard statistik agregat.
+- Melihat laporan berdasarkan unit, kelas, kategori peserta, dan periode.
+- Melihat tren pemeriksaan gula darah dan kunjungan UKS.
+- Melihat statistik tindak lanjut dan status penyelesaian.
+- Melihat ringkasan kunjungan berulang sesuai kewenangan.
+- Mengunduh laporan manajerial.
+- Tidak otomatis memiliki akses terhadap diagnosis, catatan medis rinci, foto pemeriksaan, atau komunikasi rahasia.
+
+Jika pimpinan diberi kewenangan khusus untuk melihat data individu, akses harus dibatasi berdasarkan unit dan kebutuhan tugas, disetujui secara resmi, serta tercatat dalam audit log.
+
+## Ketentuan keamanan wajib
+- Terapkan prinsip least privilege.
+- Terapkan Row Level Security di Supabase untuk setiap tabel yang menyimpan data pribadi dan kesehatan.
+- Gunakan relasi user_id dengan profil siswa atau karyawan yang sah.
+- Jangan hanya mengandalkan penyembunyian menu frontend.
+- Pastikan setiap permintaan data diperiksa berdasarkan identitas pengguna, role, dan cakupan akses.
+- Gunakan private storage bucket dan signed URL dengan masa berlaku terbatas untuk dokumen sensitif.
+- Catat aktivitas melihat, menambah, mengubah, mengekspor, dan menghapus data sensitif sesuai kebijakan audit.
+- Jangan menyediakan akses publik ke data kesehatan.
+- Penghapusan catatan kesehatan harus mengikuti kebijakan retensi dan kewenangan, bukan dilakukan sembarangan.
+
+# 3. STRUKTUR MENU APLIKASI
+
+Buat sidebar navigasi yang dinamis berdasarkan role.
+
+Menu Administrator:
+1. Dashboard
+2. Data Siswa
+3. Data Karyawan
+4. Data Unit dan Kelas
+5. Pemeriksaan Gula Darah
+6. Kunjungan UKS
+7. Tindak Lanjut
+8. Jadwal Pemeriksaan
+9. Laporan
+10. Manajemen Pengguna
+11. Pengaturan
+12. Audit Log
+
+Menu Petugas UKS:
+1. Dashboard UKS
+2. Pemeriksaan Gula Darah
+3. Pendaftaran Pemeriksaan
+4. Riwayat Pemeriksaan
+5. Kunjungan UKS
+6. Pendaftaran Kunjungan
+7. Penanganan UKS
+8. Tindak Lanjut
+9. Pengingat
+10. Laporan
+
+Menu Karyawan dan Siswa:
+1. Dashboard Saya
+2. Profil Saya
+3. Riwayat Pemeriksaan Gula Darah
+4. Riwayat Kunjungan UKS
+5. Jadwal Pemeriksaan
+6. Tindak Lanjut Saya
+7. Notifikasi
+
+Menu Pimpinan:
+1. Dashboard Manajemen
+2. Statistik Pemeriksaan Gula Darah
+3. Statistik Kunjungan UKS
+4. Statistik Tindak Lanjut
+5. Laporan per Unit
+6. Tren dan Analisis
+
+# 4. MODUL A — PEMERIKSAAN GULA DARAH SISWA DAN KARYAWAN
+
+## A. Pendaftaran peserta pemeriksaan
+
+Buat formulir pendaftaran dengan field:
+
+- Nomor pemeriksaan otomatis, misalnya GDS-20261027-0001.
+- Tanggal dan waktu pemeriksaan.
+- Kategori peserta: siswa atau karyawan.
+- Nomor identitas: NIS untuk siswa atau NIY/nomor identitas karyawan.
+- Nama peserta.
+- Unit sekolah.
+- Kelas untuk siswa atau unit kerja untuk karyawan.
+- Tanggal lahir dan usia jika diperlukan.
+- Jenis kelamin jika memang diperlukan untuk kepentingan pencatatan yang sah.
+- Riwayat pemeriksaan sebelumnya.
+- Persetujuan pemeriksaan jika diperlukan.
+- Nama petugas yang mendaftarkan.
+
+Nomor pemeriksaan harus dibuat secara unik oleh backend/database agar tidak terjadi duplikasi ketika banyak petugas melakukan pendaftaran secara bersamaan.
+
+Sediakan tiga cara mencari peserta:
+1. Pencarian langsung menggunakan nama, NIS, NIY, atau nomor identitas.
+2. Pemindaian QR Code atau kartu identitas.
+3. Filter berdasarkan unit dan kelas.
+
+Setelah peserta dipilih, tampilkan data identitas yang relevan secara otomatis. Jangan meminta petugas mengisi ulang data yang sudah tersedia.
+
+## B. Formulir pemeriksaan gula darah
+
+Buat formulir pencatatan hasil pemeriksaan yang terdiri dari:
+
+- Nomor pemeriksaan.
+- Nama dan identitas peserta.
+- Tanggal serta jam pemeriksaan.
+- Jenis pemeriksaan:
+  - Gula darah puasa.
+  - Gula darah sewaktu.
+  - Gula darah setelah makan.
+- Waktu terakhir makan.
+- Lama puasa jika relevan.
+- Hasil pemeriksaan berupa angka desimal.
+- Satuan hasil, dengan pilihan mg/dL atau mmol/L.
+- Keluhan atau gejala yang dirasakan.
+- Kondisi peserta saat diperiksa.
+- Nama petugas pemeriksa.
+- Alat pemeriksaan yang digunakan jika diperlukan.
+- Catatan tambahan.
+- Lampiran foto hasil alat pemeriksaan jika diperlukan.
+
+Validasi agar nilai hasil pemeriksaan berupa angka yang masuk akal secara teknis, dan jangan mengubah nilai yang dimasukkan petugas secara otomatis. Simpan satuan asli dan lakukan konversi hanya jika memang diperlukan, dengan hasil konversi yang jelas dan dapat ditelusuri.
+
+Sediakan tombol:
+- Simpan sebagai Draft.
+- Simpan Hasil Pemeriksaan.
+- Perbarui Catatan sesuai kewenangan.
+- Lihat Riwayat Peserta.
+- Jadwalkan Pemeriksaan Ulang.
+- Cetak Hasil Pemeriksaan jika diizinkan.
+
+Setelah hasil resmi disimpan, catat identitas petugas, waktu penyimpanan, dan riwayat perubahan.
+
+## C. Kategori hasil dan tindak lanjut
+
+Sistem harus mendukung pengaturan kategori hasil berdasarkan parameter atau pedoman yang telah ditinjau dan disetujui tenaga kesehatan yang berwenang.
+
+Kategori operasional:
+- Perlu Perhatian.
+- Pemantauan.
+- Tindak Lanjut.
+- Belum Diklasifikasikan jika data atau parameter belum memadai.
+
+Parameter klasifikasi harus mempertimbangkan jenis pemeriksaan, waktu makan, satuan, serta pedoman yang disetujui. Jangan menggunakan satu ambang angka yang sama untuk semua jenis pemeriksaan.
+
+Jangan mengarang ambang medis atau menetapkan diagnosis secara otomatis. Sediakan halaman pengaturan dengan parameter yang harus diisi dan disetujui tenaga kesehatan sebelum fitur klasifikasi diaktifkan. Catat versi parameter, tanggal berlaku, dan pihak yang menyetujui.
+
+Tampilkan pemberitahuan:
+“Kategori ini merupakan penanda administratif untuk membantu pemantauan, bukan diagnosis medis. Interpretasi hasil dan keputusan tindak lanjut harus dilakukan oleh tenaga kesehatan yang berwenang.”
+
+Fitur tindak lanjut:
+- Rekomendasi pemeriksaan ulang.
+- Jadwal pemeriksaan ulang.
+- Rekomendasi konsultasi ke fasilitas kesehatan.
+- Status tindak lanjut: Belum Dilakukan, Sedang Dipantau, Selesai, atau Dirujuk.
+- Catatan petugas.
+- Catatan komunikasi kepada peserta, orang tua/wali, kepala unit, atau pihak terkait sesuai kewenangan.
+- Tanggal tindak lanjut.
+- Nama petugas penanggung jawab.
+- Pengingat otomatis untuk jadwal yang akan datang atau yang telah terlewat.
+
+Jangan mengirimkan informasi kesehatan sensitif melalui notifikasi yang dapat dibaca pihak tidak berwenang. Gunakan notifikasi umum dan arahkan pengguna yang berhak ke halaman login untuk melihat detailnya.
+
+## D. Riwayat pemeriksaan gula darah
+
+Buat halaman riwayat pemeriksaan dengan:
+- Daftar seluruh pemeriksaan yang dapat diakses oleh petugas berwenang.
+- Filter berdasarkan nama, NIS/NIY, unit, kelas, jenis pemeriksaan, kategori hasil, petugas, dan periode.
+- Tampilan detail hasil setiap pemeriksaan.
+- Perbandingan hasil pemeriksaan sebelumnya.
+- Grafik tren hasil pemeriksaan berdasarkan tanggal.
+- Informasi jenis tes dan satuan pada setiap titik grafik.
+- Riwayat tindak lanjut dan jadwal pemeriksaan berikutnya.
+
+Grafik tren tidak boleh menggabungkan hasil yang tidak sebanding tanpa penjelasan. Pisahkan atau beri penanda yang jelas jika jenis pemeriksaan atau satuannya berbeda.
+
+## E. Dashboard pemeriksaan gula darah
+
+Tampilkan kartu statistik:
+- Total peserta diperiksa.
+- Jumlah siswa diperiksa.
+- Jumlah karyawan diperiksa.
+- Jumlah pemeriksaan pada periode aktif.
+- Jumlah peserta yang perlu pemantauan.
+- Jumlah peserta yang memerlukan tindak lanjut.
+- Jumlah jadwal pemeriksaan ulang yang akan datang.
+- Persentase tindak lanjut yang telah diselesaikan.
+
+Tampilkan grafik:
+- Jumlah pemeriksaan per hari, minggu, bulan, atau semester.
+- Distribusi pemeriksaan berdasarkan unit dan kelas.
+- Distribusi kategori hasil sesuai parameter yang disetujui.
+- Tren hasil pemeriksaan berulang per peserta yang berwenang untuk melihatnya.
+- Status tindak lanjut.
+
+Sediakan filter periode, unit, kelas, kategori peserta, dan jenis pemeriksaan.
+
+Sediakan ekspor laporan Excel dan PDF sesuai role dan cakupan akses. Laporan manajerial secara default menggunakan data agregat.
+
+# 5. MODUL B — KUNJUNGAN UKS SISWA DAN KARYAWAN
+
+## A. Pendaftaran kunjungan UKS
+
+Buat formulir kunjungan dengan field:
+
+- Nomor kunjungan otomatis, misalnya UKS-20261027-0001.
+- Tanggal dan jam kedatangan.
+- Kategori pengunjung: siswa atau karyawan.
+- NIS/NIY atau nomor identitas.
+- Nama pengunjung.
+- Unit sekolah.
+- Kelas atau unit kerja.
+- Lokasi sebelum datang ke UKS.
+- Keluhan utama.
+- Penyebab kunjungan: Sakit, Cedera, Pemeriksaan Rutin, atau Lainnya.
+- Kronologi singkat jika terjadi kecelakaan.
+- Nama guru atau pihak yang mengantar.
+- Nama petugas UKS yang menangani.
+
+Sediakan pencarian berdasarkan nama, NIS, NIY, pemindaian QR Code, unit, dan kelas.
+
+Sediakan pilihan:
+- Daftarkan Kunjungan Baru.
+- Lihat Riwayat Pengunjung.
+- Simpan sebagai Draft.
+- Simpan Kunjungan.
+
+Sistem harus mendukung beberapa kunjungan dari orang yang sama tanpa menimpa data kunjungan sebelumnya.
+
+## B. Pemeriksaan awal dan penanganan
+
+Buat bagian pemeriksaan dengan field:
+
+- Waktu pemeriksaan awal.
+- Kondisi umum pengunjung.
+- Keluhan tambahan.
+- Suhu tubuh dalam °C jika diukur.
+- Tekanan darah sistolik dan diastolik jika diukur.
+- Denyut nadi jika diperlukan.
+- Frekuensi pernapasan jika diperlukan.
+- Saturasi oksigen jika alat tersedia dan pemeriksaan diperlukan.
+- Pemeriksaan lain sesuai kebutuhan dan kompetensi petugas.
+- Jenis tindakan atau pertolongan yang diberikan.
+- Obat atau perlengkapan yang digunakan, jika relevan.
+- Dosis dan cara pemberian jika obat diberikan sesuai kewenangan serta prosedur sekolah.
+- Nama petugas yang menangani.
+- Catatan pemeriksaan dan penanganan.
+- Lampiran foto atau dokumen jika diperlukan.
+- Waktu mulai istirahat.
+- Waktu selesai istirahat.
+
+Setiap data pemeriksaan boleh dikosongkan apabila tidak dilakukan. Jangan mengisi nilai pemeriksaan secara otomatis dengan nilai normal atau nilai perkiraan.
+
+Jika mencatat pemberian obat, sediakan validasi dan pencatatan petugas sesuai SOP sekolah, persetujuan yang diperlukan, serta kewenangan pemberian obat. Sistem tidak boleh otomatis menentukan diagnosis atau meresepkan obat.
+
+Sediakan kronologi dan catatan insiden untuk kejadian cedera atau kecelakaan.
+
+## C. Hasil kunjungan UKS
+
+Sediakan pilihan hasil akhir:
+1. Kembali ke kelas.
+2. Kembali bekerja.
+3. Beristirahat di UKS.
+4. Dijemput orang tua atau keluarga.
+5. Dipulangkan.
+6. Dirujuk ke klinik atau rumah sakit.
+7. Memerlukan pemantauan lanjutan.
+8. Masih dalam penanganan.
+
+Field tambahan:
+- Jam keluar dari UKS.
+- Nama penjemput.
+- Hubungan dengan peserta.
+- Nomor kontak penjemput.
+- Waktu orang tua/wali atau kepala unit dihubungi.
+- Nama petugas yang melakukan komunikasi.
+- Nama pihak yang memberikan persetujuan jika diperlukan.
+- Catatan serah terima.
+- Status tindak lanjut.
+- Jadwal pemantauan berikutnya.
+- Nama petugas penanggung jawab.
+
+Apabila hasil kunjungan adalah Beristirahat di UKS atau Masih dalam Penanganan, status kunjungan harus tetap aktif dan dapat diperbarui.
+
+Apabila peserta dirujuk, sediakan catatan tujuan rujukan, waktu rujukan, petugas yang mengoordinasikan, dan informasi serah terima yang diperlukan.
+
+Sediakan tombol:
+- Simpan Penanganan.
+- Perbarui Status.
+- Selesaikan Kunjungan.
+- Cetak Ringkasan Kunjungan.
+- Buat Jadwal Pemantauan.
+
+## D. Riwayat kunjungan UKS
+
+Tampilkan riwayat kunjungan berdasarkan:
+- Nomor kunjungan.
+- Nama peserta.
+- NIS/NIY.
+- Unit dan kelas.
+- Tanggal kunjungan.
+- Jenis keluhan.
+- Penyebab kunjungan.
+- Petugas UKS.
+- Hasil penanganan.
+- Status kunjungan.
+- Status tindak lanjut.
+
+Sediakan pencarian, filter, pengurutan, pagination, dan tampilan detail kunjungan.
+
+Riwayat harus menyimpan data setiap kunjungan secara terpisah. Petugas yang berwenang dapat membuka riwayat sebelumnya untuk mendukung tindak lanjut.
+
+## E. Peringatan kunjungan berulang
+
+Buat fitur untuk mendeteksi pengunjung yang datang berulang kali.
+
+Konfigurasi default:
+- Batas kunjungan berulang: 3 kali.
+- Periode penghitungan: 1 bulan kalender.
+- Ambang dan periode dapat diubah oleh administrator sesuai kebijakan sekolah.
+
+Ketentuan:
+- Hitung kunjungan unik berdasarkan identitas peserta dan tanggal kunjungan yang valid.
+- Hindari menghitung draft atau duplikasi data sebagai kunjungan yang sah.
+- Tampilkan peringatan saat peserta mencapai atau melewati ambang.
+- Berikan notifikasi kepada petugas UKS.
+- Sediakan ringkasan untuk kepala unit sesuai kewenangan.
+- Tampilkan daftar kunjungan yang memenuhi kriteria.
+- Sediakan akses ke riwayat sebelumnya bagi petugas yang berwenang.
+- Catat status peninjauan peringatan.
+- Sediakan kolom catatan tindak lanjut internal.
+
+Peringatan kunjungan berulang hanya merupakan indikator untuk peninjauan, bukan diagnosis atau kesimpulan mengenai kondisi peserta.
+
+Catatan tindak lanjut internal tidak boleh ditampilkan kepada siswa, karyawan, atau pihak lain yang tidak berwenang.
+
+## F. Dashboard kunjungan UKS
+
+Buat kartu statistik:
+- Jumlah kunjungan hari ini.
+- Jumlah kunjungan minggu ini.
+- Jumlah kunjungan bulan ini.
+- Jumlah kunjungan semester ini.
+- Jumlah kunjungan siswa.
+- Jumlah kunjungan karyawan.
+- Jumlah kunjungan yang masih aktif.
+- Jumlah peserta yang kembali ke kelas.
+- Jumlah peserta yang kembali bekerja.
+- Jumlah peserta yang dijemput atau dipulangkan.
+- Jumlah peserta yang dirujuk.
+- Jumlah kunjungan berulang.
+- Jumlah tindak lanjut yang belum selesai.
+
+Grafik:
+- Tren kunjungan harian, mingguan, bulanan, dan semester.
+- Rekap kunjungan berdasarkan unit dan kelas.
+- Jenis keluhan paling banyak.
+- Penyebab kunjungan.
+- Distribusi hasil penanganan.
+- Waktu kunjungan paling sering.
+- Perbandingan jumlah kunjungan siswa dan karyawan.
+- Persentase tindak lanjut selesai.
+
+Sediakan filter tanggal, periode, unit, kelas, kategori pengunjung, jenis keluhan, dan hasil penanganan.
+
+Semua grafik dan angka harus diambil dari database aktual dan berubah sesuai filter yang dipilih.
+
+# 6. DASHBOARD UTAMA DAN NAVIGASI
+
+Buat dashboard yang berbeda untuk setiap role.
+
+## Dashboard petugas UKS
+Tampilkan:
+- Statistik pemeriksaan gula darah.
+- Statistik kunjungan UKS.
+- Daftar kunjungan aktif.
+- Peserta yang memerlukan tindak lanjut.
+- Jadwal pemeriksaan ulang hari ini.
+- Jadwal pemantauan yang terlewat.
+- Peringatan kunjungan berulang.
+- Aktivitas terakhir.
+- Tombol cepat untuk mendaftarkan pemeriksaan dan kunjungan baru.
+
+## Dashboard siswa dan karyawan
+Tampilkan:
+- Sapaan pengguna.
+- Ringkasan profil.
+- Riwayat pemeriksaan milik sendiri.
+- Riwayat kunjungan milik sendiri.
+- Jadwal pemeriksaan ulang.
+- Pengingat dan tindak lanjut yang ditujukan kepada pengguna.
+- Informasi status tindak lanjut yang aman untuk ditampilkan.
+
+Jangan menampilkan catatan internal petugas, data peserta lain, atau statistik yang dapat mengungkap informasi kesehatan individu.
+
+## Dashboard pimpinan
+Tampilkan:
+- Statistik agregat pemeriksaan gula darah.
+- Statistik agregat kunjungan UKS.
+- Tren kesehatan sekolah secara agregat.
+- Distribusi kunjungan per unit.
+- Rekap tindak lanjut.
+- Laporan bulanan.
+- Ekspor data manajerial.
+
+Terapkan penyamaran atau agregasi pada kelompok kecil apabila diperlukan untuk mencegah identifikasi individu dari statistik.
+
+# 7. MODUL LAPORAN DAN EKSPOR
+
+Buat modul laporan dengan filter:
+- Rentang tanggal.
+- Bulan dan tahun.
+- Semester.
+- Unit.
+- Kelas.
+- Kategori peserta.
+- Jenis pemeriksaan.
+- Kategori hasil.
+- Jenis keluhan.
+- Hasil penanganan.
+- Status tindak lanjut.
+
+Jenis laporan:
+1. Laporan pemeriksaan gula darah.
+2. Laporan hasil pemeriksaan per peserta untuk petugas berwenang.
+3. Laporan tren pemeriksaan berulang.
+4. Laporan kunjungan UKS.
+5. Laporan kunjungan berulang.
+6. Laporan jenis keluhan.
+7. Laporan hasil penanganan.
+8. Laporan rujukan.
+9. Laporan tindak lanjut.
+10. Laporan statistik per unit.
+11. Laporan bulanan dan semester.
+12. Laporan aktivitas petugas jika diperlukan.
+
+Format Excel:
+- Header kolom yang jelas.
+- Format tanggal dan angka yang konsisten.
+- Filter pada header tabel jika sesuai.
+- Nama file mencantumkan jenis laporan dan periode.
+
+Format PDF:
+- Logo sekolah.
+- Nama sekolah.
+- Judul laporan.
+- Periode laporan.
+- Tanggal pembuatan laporan.
+- Ringkasan statistik.
+- Tabel laporan.
+- Grafik jika relevan.
+- Nama pembuat laporan jika diizinkan.
+- Ruang tanda tangan jika diperlukan.
+
+Gunakan format angka yang konsisten dan tampilkan satuan hasil pemeriksaan. Ekspor harus menghormati hak akses yang sama dengan tampilan aplikasi. Catat aktivitas ekspor data sensitif di audit log.
+
+# 8. NOTIFIKASI DAN PENGINGAT
+
+Buat pusat notifikasi di dalam aplikasi.
+
+Jenis notifikasi:
+- Ada pemeriksaan gula darah baru yang tercatat.
+- Jadwal pemeriksaan ulang akan datang.
+- Jadwal pemeriksaan ulang telah terlewat.
+- Ada tindak lanjut yang perlu diproses.
+- Kunjungan UKS belum selesai.
+- Pengunjung memenuhi kriteria kunjungan berulang.
+- Ada perubahan status tindak lanjut.
+- Ada laporan yang siap diakses jika fitur tersebut digunakan.
+
+Fitur:
+- Penanda notifikasi sudah dibaca atau belum.
+- Waktu pembuatan notifikasi.
+- Tautan ke halaman yang sesuai dengan hak akses.
+- Pengaturan jenis notifikasi.
+- Pengingat berbasis tanggal.
+- Pencegahan notifikasi duplikat.
+- Pencatatan keberhasilan atau kegagalan pengiriman.
+
+Jangan mengirimkan detail hasil pemeriksaan atau catatan medis melalui pesan yang tidak aman. Jika integrasi email atau WhatsApp ditambahkan, gunakan layanan backend yang aman dan pastikan penerima, persetujuan, serta isi pesan sesuai kebijakan sekolah.
+
+# 9. DESAIN UI/UX
+
+Gunakan desain dashboard administrasi kesehatan sekolah yang modern, bersih, dan profesional.
+
+Palet warna:
+- Biru tua sebagai warna utama.
+- Biru muda untuk elemen sekunder.
+- Putih untuk latar utama.
+- Abu-abu muda untuk panel dan pembatas.
+- Warna status yang konsisten dan tidak berlebihan.
+
+Komponen UI:
+- Sidebar yang dapat diciutkan.
+- Header dengan nama aplikasi, notifikasi, profil, dan logout.
+- Kartu statistik.
+- Grafik interaktif.
+- Tabel dengan pencarian dan filter.
+- Modal konfirmasi.
+- Formulir dengan validasi.
+- Badge status.
+- Breadcrumb.
+- Pagination.
+- Empty state.
+- Loading state.
+- Error state.
+- Toast notification.
+- Dialog konfirmasi sebelum tindakan penting.
+
+Pastikan:
+- Layout responsif.
+- Navigasi mudah digunakan di layar kecil.
+- Formulir memiliki label yang jelas.
+- Pesan validasi menggunakan Bahasa Indonesia.
+- Tombol utama mudah ditemukan.
+- Kontras warna mudah dibaca.
+- Tabel dapat digunakan di perangkat mobile.
+- Data sensitif tidak ditampilkan pada notifikasi layar yang tidak aman.
+- Jangan mengandalkan warna saja untuk membedakan status.
+
+# 10. STRUKTUR DATABASE
+
+Buat skema database relasional yang terstruktur dan memiliki foreign key, indeks, timestamp, serta kebijakan akses.
+
+Minimal tabel yang diperlukan:
+
+1. profiles
+   - id
+   - auth_user_id
+   - employee_or_student_id
+   - full_name
+   - role
+   - category
+   - unit_id
+   - class_id
+   - date_of_birth jika diperlukan
+   - contact_information sesuai kebutuhan
+   - is_active
+   - created_at
+   - updated_at
+
+2. units
+   - id
+   - unit_name
+   - unit_code
+   - is_active
+
+3. classes
+   - id
+   - class_name
+   - unit_id
+   - is_active
+
+4. glucose_examinations
+   - id
+   - examination_number
+   - participant_id
+   - examination_datetime
+   - examination_type
+   - last_meal_datetime
+   - fasting_duration jika relevan
+   - result_value
+   - result_unit
+   - symptoms
+   - participant_condition
+   - examiner_id
+   - device_name
+   - attachment_path
+   - notes
+   - classification
+   - classification_parameter_version
+   - consent_status jika diperlukan
+   - record_status
+   - created_at
+   - updated_at
+
+5. glucose_follow_ups
+   - id
+   - examination_id
+   - responsible_staff_id
+   - follow_up_status
+   - recommended_action
+   - scheduled_date
+   - completed_at
+   - communication_notes
+   - referral_details jika diperlukan
+   - created_at
+   - updated_at
+
+6. uks_visits
+   - id
+   - visit_number
+   - participant_id
+   - visit_datetime
+   - previous_location
+   - main_complaint
+   - visit_reason
+   - incident_chronology
+   - accompanying_person
+   - handling_staff_id
+   - initial_condition
+   - visit_status
+   - outcome
+   - rest_start_time
+   - rest_end_time
+   - checkout_datetime
+   - created_at
+   - updated_at
+
+7. uks_assessments
+   - id
+   - visit_id
+   - assessment_datetime
+   - temperature
+   - systolic_pressure
+   - diastolic_pressure
+   - pulse_rate
+   - respiratory_rate
+   - oxygen_saturation
+   - other_measurements
+   - treatment
+   - medication_or_equipment
+   - notes
+   - attachment_path
+   - examiner_id
+   - created_at
+
+8. uks_follow_ups
+   - id
+   - visit_id
+   - responsible_staff_id
+   - follow_up_status
+   - scheduled_date
+   - parent_or_contact_called_at
+   - contact_person
+   - pickup_person
+   - pickup_contact
+   - approval_person
+   - referral_destination
+   - handover_notes
+   - completed_at
+   - created_at
+   - updated_at
+
+9. health_classification_parameters
+   - id
+   - examination_type
+   - result_unit
+   - parameter_configuration
+   - effective_from
+   - approved_by
+   - approved_at
+   - version
+   - is_active
+
+10. notifications
+    - id
+    - recipient_user_id
+    - notification_type
+    - title
+    - message
+    - target_record_type
+    - target_record_id
+    - is_read
+    - created_at
+
+11. system_settings
+    - id
+    - setting_key
+    - setting_value
+    - updated_by
+    - updated_at
+
+12. audit_logs
+    - id
+    - actor_user_id
+    - action
+    - entity_type
+    - entity_id
+    - timestamp
+    - relevant_metadata
+
+Tambahkan tabel lain jika diperlukan, seperti persetujuan, catatan insiden, lampiran, histori perubahan, serta relasi pengguna dan cakupan kewenangan.
+
+Gunakan UUID untuk primary key bila sesuai. Gunakan timestamp yang konsisten dan tampilkan waktu lokal Asia/Jakarta di antarmuka. Simpan waktu secara konsisten di database dan hindari pergeseran waktu tujuh jam pada tampilan atau laporan.
+
+Nomor pemeriksaan dan nomor kunjungan harus unik dan dibuat melalui mekanisme backend/database yang aman terhadap konflik. Jangan membuat nomor urut hanya dengan menghitung jumlah baris di frontend.
+
+Terapkan soft delete atau mekanisme retensi yang sesuai untuk data sensitif. Jangan menghapus riwayat pemeriksaan atau kunjungan secara permanen tanpa prosedur dan kewenangan yang sesuai.
+
+# 11. KEAMANAN DAN PRIVASI DATA KESEHATAN
+
+Data pemeriksaan gula darah, keluhan, kunjungan UKS, dan penanganan termasuk data sensitif.
+
+Terapkan:
+- Supabase Row Level Security untuk setiap tabel terkait.
+- Pembatasan akses berbasis role dan relasi peserta.
+- Siswa dan karyawan hanya dapat membaca data miliknya sendiri.
+- Petugas UKS hanya dapat mengakses data sesuai kewenangan.
+- Pimpinan melihat statistik agregat secara default.
+- Validasi input di frontend dan backend.
+- Validasi file yang diunggah berdasarkan jenis, ukuran, dan izin akses.
+- Penyimpanan lampiran dalam bucket privat.
+- Audit log untuk aktivitas sensitif.
+- Perlindungan dari akses langsung melalui URL atau API.
+- Pencegahan akses horizontal ke data milik pengguna lain.
+- Pengelolaan sesi, logout, dan pembatasan akses pengguna nonaktif.
+- Pembatasan ekspor dan pencetakan berdasarkan role.
+- Penggunaan data dummy untuk pengujian.
+- Kepatuhan terhadap kebijakan perlindungan data pribadi dan perlindungan anak yang berlaku.
+
+Jangan menampilkan hasil pemeriksaan, keluhan, catatan medis, foto, atau komunikasi pribadi pada dashboard publik.
+
+# 12. VALIDASI DAN ATURAN BISNIS
+
+Implementasikan aturan berikut:
+
+1. Peserta harus terdaftar atau diidentifikasi secara valid sebelum pemeriksaan atau kunjungan disimpan.
+2. Satu peserta dapat memiliki banyak pemeriksaan dan kunjungan.
+3. Setiap hasil pemeriksaan harus memiliki jenis tes, nilai, satuan, waktu, dan petugas sesuai kebutuhan pencatatan.
+4. Nilai hasil tidak boleh ditentukan secara otomatis berdasarkan kategori.
+5. Parameter klasifikasi hanya berlaku setelah disetujui tenaga kesehatan berwenang.
+6. Kunjungan yang masih aktif tidak boleh otomatis ditandai selesai.
+7. Hasil penanganan dan jam keluar harus konsisten.
+8. Jadwal tindak lanjut harus memiliki status yang jelas.
+9. Peringatan kunjungan berulang tidak boleh menghasilkan diagnosis.
+10. Perubahan data resmi harus tercatat.
+11. Karyawan dan siswa tidak dapat mengedit catatan resmi petugas.
+12. Dashboard dan laporan harus mengikuti filter dan hak akses.
+13. Semua data menggunakan waktu Asia/Jakarta pada tampilan.
+14. Penghapusan atau koreksi catatan resmi harus mengikuti prosedur audit.
+15. Jika terdapat data yang tidak lengkap, tampilkan status belum lengkap, bukan mengarang nilai.
+16. Pengguna tidak boleh mendapatkan data hanya dengan mengubah ID pada URL.
+
+# 13. FITUR TAMBAHAN
+
+Tambahkan fitur:
+- Pencarian global berdasarkan nomor pemeriksaan, nomor kunjungan, nama, dan identitas peserta sesuai kewenangan.
+- QR Code untuk mempercepat identifikasi peserta.
+- Cetak ringkasan kunjungan dan pemeriksaan.
+- Riwayat aktivitas.
+- Manajemen unit dan kelas.
+- Pengaturan batas kunjungan berulang.
+- Pengaturan template laporan.
+- Pengingat tindak lanjut.
+- Halaman profil pengguna.
+- Pengaturan logo dan identitas sekolah.
+- Halaman bantuan penggunaan aplikasi.
+- Halaman akses ditolak.
+- Halaman 404.
+- Penanganan error dan koneksi database.
+- Konfirmasi sebelum menyimpan atau memperbarui data penting.
+
+# 14. KRITERIA PENERIMAAN APLIKASI
+
+Aplikasi dinyatakan selesai apabila:
+
+1. Pengguna dapat login dan logout.
+2. Setiap role mendapatkan dashboard dan menu yang benar.
+3. Siswa dan karyawan hanya dapat melihat data mereka sendiri, termasuk melalui API dan query langsung.
+4. Petugas UKS dapat mencatat pemeriksaan gula darah dan kunjungan UKS.
+5. Nomor pemeriksaan dan nomor kunjungan dibuat otomatis serta unik.
+6. Pencarian berdasarkan nama dan identitas berfungsi.
+7. QR Code dapat digunakan untuk mengidentifikasi peserta.
+8. Riwayat pemeriksaan dan kunjungan tersimpan di database.
+9. Grafik dan statistik menggunakan data aktual.
+10. Pengingat tindak lanjut dan kunjungan berulang berfungsi.
+11. Parameter klasifikasi hasil tidak aktif sebelum disetujui tenaga kesehatan.
+12. Ekspor Excel dan PDF berfungsi dengan hak akses yang sesuai.
+13. Lampiran dapat diunggah dan hanya dapat diakses pengguna berwenang.
+14. Row Level Security sudah diterapkan dan diuji.
+15. Audit log merekam aktivitas penting.
+16. Tampilan responsif di komputer dan smartphone.
+17. Tidak terdapat tombol yang hanya bersifat dekoratif atau fitur yang mengklaim berhasil tanpa proses backend.
+18. Tidak ada secret key di kode frontend.
+19. Tersedia SQL schema dan instruksi setup.
+20. Tersedia petunjuk deployment dan konfigurasi environment variables.
+
+# 15. TAHAPAN PENGERJAAN
+
+Kerjakan aplikasi secara bertahap, tetapi dengan arsitektur yang konsisten.
+
+Tahap 1: Bangun struktur proyek, desain UI, autentikasi, profil pengguna, role, dan database.
+
+Tahap 2: Implementasikan modul pemeriksaan gula darah, riwayat pemeriksaan, serta pengaturan parameter klasifikasi yang disetujui tenaga kesehatan.
+
+Tahap 3: Implementasikan modul kunjungan UKS, pemeriksaan dasar, penanganan, hasil kunjungan, dan tindak lanjut.
+
+Tahap 4: Implementasikan peringatan kunjungan berulang, notifikasi, dan pengingat jadwal.
+
+Tahap 5: Implementasikan dashboard, grafik, laporan Excel/PDF, dan audit log.
+
+Tahap 6: Uji seluruh role, kebijakan RLS, validasi, alur data, keamanan lampiran, dan tampilan responsif.
+
+Jangan hanya menghasilkan desain atau kode frontend. Implementasikan seluruh alur utama dengan database nyata, berikan SQL migration, konfigurasi yang dibutuhkan, serta petunjuk menjalankan aplikasi.
+
+Jika suatu layanan eksternal belum dikonfigurasi, tampilkan petunjuk konfigurasi yang jelas dan jangan mengklaim layanan tersebut sudah berfungsi.
+
+Mulai dengan membuat struktur proyek dan dashboard utama yang profesional, kemudian lanjutkan ke seluruh modul sampai memenuhi kriteria penerimaan.
+
+**Nama aplikasi:** Lazuardi UKS Management System (LUKS).
+
+**Tagline:** “Integrated School Health Information System”.
+
+**Tujuan utama:** Memudahkan sekolah dalam mengelola pemeriksaan gula darah, kunjungan UKS, pemantauan kesehatan, tindak lanjut, dan laporan manajemen secara terintegrasi, aman, akurat, serta menjaga kerahasiaan data siswa dan karyawan.
