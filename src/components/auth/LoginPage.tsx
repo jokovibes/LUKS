@@ -212,7 +212,7 @@ export const LoginPage: React.FC = () => {
         <div className="text-center text-slate-400 text-xs">
           <p>© 2026 Lazuardi Global Compassionate School</p>
           <p className="text-[10px] text-slate-500 mt-0.5">
-            Integrated School Health Information System (LUKS) • Hak Cipta Dilindungi
+            Integrated School Health Information System (LUKS) • Hak Cipta Dilindungi • Jokovibes
           </p>
         </div>
       </div>
