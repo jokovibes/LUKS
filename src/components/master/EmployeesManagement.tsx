@@ -17,6 +17,9 @@ import {
   Briefcase,
   Upload,
   Download,
+  Building2,
+  ArrowRightLeft,
+  Info,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DataService } from '../../services/dataService';
@@ -33,6 +36,14 @@ export const EmployeesManagement: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<UserProfile | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<UserProfile | null>(null);
+
+  // Transfer / Mutasi State
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferEmployee, setTransferEmployee] = useState<UserProfile | null>(null);
+  const [transferTargetUnitId, setTransferTargetUnitId] = useState('');
+  const [transferNewPosition, setTransferNewPosition] = useState('');
+  const [transferNotes, setTransferNotes] = useState('');
+  const [transferSuccessMsg, setTransferSuccessMsg] = useState('');
 
   // Form State
   const [fullName, setFullName] = useState('');
@@ -65,6 +76,64 @@ export const EmployeesManagement: React.FC = () => {
     }
     return true;
   });
+
+  const handleOpenTransfer = (emp?: UserProfile) => {
+    setTransferSuccessMsg('');
+    const target = emp || filtered[0] || employees[0] || null;
+    setTransferEmployee(target);
+    setTransferTargetUnitId(target ? target.unit_id : units[0]?.id || '');
+    setTransferNewPosition(target ? target.work_unit || '' : '');
+    setTransferNotes('');
+    setIsTransferModalOpen(true);
+  };
+
+  const handleExecuteTransfer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transferEmployee || !currentUser) return;
+    if (!transferTargetUnitId) {
+      alert('Silakan pilih unit penempatan baru.');
+      return;
+    }
+
+    const oldUnit = units.find((u) => u.id === transferEmployee.unit_id);
+    const newUnit = units.find((u) => u.id === transferTargetUnitId);
+
+    DataService.saveProfile(
+      {
+        ...transferEmployee,
+        unit_id: transferTargetUnitId,
+        work_unit: transferNewPosition.trim() || transferEmployee.work_unit,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        id: currentUser.id,
+        name: currentUser.full_name,
+        role: currentUser.role,
+      }
+    );
+
+    DataService.logAudit(
+      { id: currentUser.id, name: currentUser.full_name, role: currentUser.role },
+      'UPDATE_RECORD',
+      'profiles',
+      transferEmployee.id,
+      {
+        event: 'MUTASI_UNIT_KARYAWAN',
+        nama_karyawan: transferEmployee.full_name,
+        unit_lama: oldUnit?.unit_name || transferEmployee.unit_id,
+        unit_baru: newUnit?.unit_name || transferTargetUnitId,
+        jabatan_baru: transferNewPosition,
+        catatan: transferNotes || undefined,
+      }
+    );
+
+    setTransferSuccessMsg(`Berhasil memutasi ${transferEmployee.full_name} ke unit ${newUnit?.unit_name || 'baru'}`);
+    setReloadKey((k) => k + 1);
+    setTimeout(() => {
+      setIsTransferModalOpen(false);
+      setTransferSuccessMsg('');
+    }, 1200);
+  };
 
   const handleOpenAdd = () => {
     setEditingEmployee(null);
@@ -230,6 +299,14 @@ export const EmployeesManagement: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={() => handleOpenTransfer()}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
+            title="Mutasi penempatan unit sekolah atau posisi penugasan baru bagi guru & karyawan"
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+            Mutasi Unit Karyawan
+          </button>
+          <button
             onClick={() => CsvService.downloadEmployeeTemplateCsv()}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition border border-slate-300"
             title="Unduh contoh template CSV data guru & karyawan"
@@ -281,6 +358,23 @@ export const EmployeesManagement: React.FC = () => {
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Notice Banner Mutasi Karyawan */}
+      <div className="bg-purple-50/70 border border-purple-200/80 rounded-2xl p-3.5 px-4 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-purple-950">
+        <div className="flex items-start sm:items-center gap-2.5">
+          <Info className="w-4 h-4 text-purple-700 shrink-0 mt-0.5 sm:mt-0" />
+          <span>
+            <strong>Mutasi Unit & Penugasan:</strong> Guru dan staf yang berpindah unit penempatan (TK/SD/SMP/SMA/Yayasan) dapat dimutasi secara langsung. Riwayat pemeriksaan gula darah, kunjungan UKS, dan jejak audit masa lalu <strong>tetap tersimpan utuh dan terhubung</strong>.
+          </span>
+        </div>
+        <button
+          onClick={() => handleOpenTransfer()}
+          className="shrink-0 text-[11px] font-bold text-purple-800 hover:text-purple-950 bg-white px-3 py-1.5 rounded-lg border border-purple-200 shadow-2xs flex items-center gap-1.5 transition"
+        >
+          <ArrowRightLeft className="w-3.5 h-3.5 text-purple-700" />
+          Mutasi Unit Sekarang
+        </button>
       </div>
 
       {/* Table */}
@@ -335,6 +429,13 @@ export const EmployeesManagement: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleOpenTransfer(emp)}
+                          className="p-1.5 hover:bg-indigo-50 text-indigo-700 rounded-lg transition"
+                          title="Mutasi Unit Karyawan Ini"
+                        >
+                          <ArrowRightLeft className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleOpenEdit(emp)}
                           className="p-1.5 hover:bg-purple-50 text-purple-700 rounded-lg transition"
@@ -538,6 +639,155 @@ export const EmployeesManagement: React.FC = () => {
                 Ya, Hapus Data
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Mutasi Unit Karyawan */}
+      {isTransferModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+            <div className="px-6 py-4 bg-indigo-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-800 flex items-center justify-center">
+                  <ArrowRightLeft className="w-4 h-4 text-indigo-200" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Mutasi Unit Kerja & Penugasan</h3>
+                  <p className="text-[11px] text-indigo-200">
+                    Pindahkan unit penempatan atau posisi penugasan guru dan staf
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTransferModalOpen(false)}
+                className="p-1 text-indigo-200 hover:text-white rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteTransfer} className="p-6 space-y-4 text-xs overflow-y-auto max-h-[80vh]">
+              {transferSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{transferSuccessMsg}</span>
+                </div>
+              )}
+
+              {/* 1. Pilih Karyawan */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Pilih Guru / Karyawan *</label>
+                <select
+                  value={transferEmployee?.id || ''}
+                  onChange={(e) => {
+                    const found = employees.find((x) => x.id === e.target.value);
+                    if (found) {
+                      setTransferEmployee(found);
+                      setTransferTargetUnitId(found.unit_id);
+                      setTransferNewPosition(found.work_unit || '');
+                    }
+                  }}
+                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white font-medium"
+                >
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.full_name} ({emp.employee_or_student_id}) - {emp.work_unit || 'Karyawan'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Saat Ini */}
+              {transferEmployee && (
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+                  <div className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
+                    Penempatan Saat Ini
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500">Unit Sekolah:</span>{' '}
+                      <span className="font-bold text-slate-800">
+                        {units.find((u) => u.id === transferEmployee.unit_id)?.unit_name || transferEmployee.unit_id}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Jabatan/Unit Kerja:</span>{' '}
+                      <span className="font-bold text-slate-800">{transferEmployee.work_unit || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Unit Penempatan Baru */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Unit Penempatan Baru *</label>
+                <select
+                  required
+                  value={transferTargetUnitId}
+                  onChange={(e) => setTransferTargetUnitId(e.target.value)}
+                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white font-medium"
+                >
+                  {units.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.unit_code} - {u.unit_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 3. Posisi / Jabatan Baru */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Posisi / Jabatan Penugasan Baru *</label>
+                <input
+                  type="text"
+                  required
+                  value={transferNewPosition}
+                  onChange={(e) => setTransferNewPosition(e.target.value)}
+                  placeholder="Contoh: Guru Matematika SMA, Pembina UKS SMP..."
+                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
+                />
+              </div>
+
+              {/* 4. Catatan Mutasi */}
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Catatan SK / Keterangan Mutasi (Opsional)</label>
+                <input
+                  type="text"
+                  value={transferNotes}
+                  onChange={(e) => setTransferNotes(e.target.value)}
+                  placeholder="Nomor SK mutasi atau dasar pemindahan..."
+                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
+                />
+              </div>
+
+              {/* Info Medis */}
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Keamanan Riwayat UKS:</strong> Seluruh riwayat kunjungan UKS, pemeriksaan gula darah, dan jejak audit karyawan di unit terdahulu tetap tersimpan permanen dan terhubung dengan NIY karyawan.
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsTransferModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!transferEmployee}
+                  className="px-5 py-2 bg-indigo-700 hover:bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <ArrowRightLeft className="w-4 h-4" />
+                  Simpan Mutasi Unit
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

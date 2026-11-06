@@ -19,6 +19,12 @@ import {
   Building2,
   Upload,
   Download,
+  TrendingUp,
+  ArrowRight,
+  CheckSquare,
+  Square,
+  Users,
+  Info,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DataService } from '../../services/dataService';
@@ -37,6 +43,16 @@ export const StudentsManagement: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<UserProfile | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<UserProfile | null>(null);
 
+  // Kenaikan / Pindah Kelas State
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
+  const [promoteSourceUnitId, setPromoteSourceUnitId] = useState('');
+  const [promoteSourceClassId, setPromoteSourceClassId] = useState('');
+  const [promoteTargetUnitId, setPromoteTargetUnitId] = useState('');
+  const [promoteTargetClassId, setPromoteTargetClassId] = useState('');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [isGraduate, setIsGraduate] = useState(false);
+  const [promoteSuccessMsg, setPromoteSuccessMsg] = useState('');
+
   // Form State
   const [fullName, setFullName] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -51,6 +67,8 @@ export const StudentsManagement: React.FC = () => {
 
   const units = DataService.getUnits();
   const classes = DataService.getClasses(unitId || selectedUnitId);
+  const promoteSourceClasses = DataService.getClasses(promoteSourceUnitId);
+  const promoteTargetClasses = DataService.getClasses(promoteTargetUnitId);
 
   const students = React.useMemo(() => DataService.getProfiles('siswa'), [reloadKey]);
 
@@ -67,6 +85,107 @@ export const StudentsManagement: React.FC = () => {
     }
     return true;
   });
+
+  const candidatePromoteStudents = students.filter((s) => {
+    if (promoteSourceUnitId && s.unit_id !== promoteSourceUnitId) return false;
+    if (promoteSourceClassId && s.class_id !== promoteSourceClassId) return false;
+    return true;
+  });
+
+  const handleOpenPromote = (singleStudent?: UserProfile) => {
+    setPromoteSuccessMsg('');
+    if (singleStudent) {
+      setPromoteSourceUnitId(singleStudent.unit_id);
+      setPromoteSourceClassId(singleStudent.class_id || '');
+      setSelectedStudentIds([singleStudent.id]);
+      setPromoteTargetUnitId(singleStudent.unit_id);
+      setPromoteTargetClassId('');
+      setIsGraduate(false);
+    } else {
+      const initUnit = selectedUnitId || units[1]?.id || units[0]?.id || '';
+      setPromoteSourceUnitId(initUnit);
+      setPromoteSourceClassId(selectedClassId || '');
+      const initialCandidates = students.filter((s) => {
+        if (initUnit && s.unit_id !== initUnit) return false;
+        if (selectedClassId && s.class_id !== selectedClassId) return false;
+        return true;
+      });
+      setSelectedStudentIds(initialCandidates.map((s) => s.id));
+      setPromoteTargetUnitId(initUnit);
+      setPromoteTargetClassId('');
+      setIsGraduate(false);
+    }
+    setIsPromoteModalOpen(true);
+  };
+
+  const handleToggleSelectStudent = (id: string) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllCandidates = (candidateIds: string[]) => {
+    if (selectedStudentIds.length === candidateIds.length) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds([...candidateIds]);
+    }
+  };
+
+  const handleExecutePromotion = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || selectedStudentIds.length === 0) return;
+    if (!isGraduate && (!promoteTargetUnitId || !promoteTargetClassId)) {
+      alert('Silakan pilih unit dan kelas tujuan kenaikan kelas.');
+      return;
+    }
+
+    const targetUnit = units.find((u) => u.id === promoteTargetUnitId);
+    const targetClass = promoteTargetClasses.find((c) => c.id === promoteTargetClassId);
+
+    selectedStudentIds.forEach((stdId) => {
+      const studentObj = students.find((s) => s.id === stdId);
+      if (studentObj) {
+        DataService.saveProfile(
+          {
+            ...studentObj,
+            unit_id: isGraduate ? studentObj.unit_id : promoteTargetUnitId,
+            class_id: isGraduate ? undefined : promoteTargetClassId,
+            is_active: isGraduate ? false : true,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: currentUser.id,
+            name: currentUser.full_name,
+            role: currentUser.role,
+          }
+        );
+      }
+    });
+
+    const targetDesc = isGraduate
+      ? 'Status Lulus / Alumni'
+      : `${targetUnit?.unit_code || ''} - ${targetClass?.class_name || ''}`;
+
+    DataService.logAudit(
+      { id: currentUser.id, name: currentUser.full_name, role: currentUser.role },
+      'UPDATE_RECORD',
+      'profiles',
+      undefined,
+      {
+        event: 'KENAIKAN_MUTASI_KELAS',
+        jumlah_siswa: selectedStudentIds.length,
+        tujuan: targetDesc,
+      }
+    );
+
+    setPromoteSuccessMsg(`Berhasil memproses kenaikan/mutasi ${selectedStudentIds.length} siswa ke: ${targetDesc}`);
+    setReloadKey((k) => k + 1);
+    setTimeout(() => {
+      setIsPromoteModalOpen(false);
+      setPromoteSuccessMsg('');
+    }, 1200);
+  };
 
   const handleOpenAdd = () => {
     setEditingStudent(null);
@@ -248,6 +367,14 @@ export const StudentsManagement: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={() => handleOpenPromote()}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition shadow-xs"
+            title="Kenaikan kelas atau mutasi rombel belajar secara individu maupun massal"
+          >
+            <TrendingUp className="w-4 h-4" />
+            Naik / Pindah Kelas
+          </button>
+          <button
             onClick={() => CsvService.downloadStudentTemplateCsv()}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition border border-slate-300"
             title="Unduh contoh template CSV data siswa"
@@ -320,6 +447,23 @@ export const StudentsManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* Notice Banner Kenaikan Kelas */}
+      <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-2xl p-3.5 px-4 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-indigo-950">
+        <div className="flex items-start sm:items-center gap-2.5">
+          <Info className="w-4 h-4 text-indigo-700 shrink-0 mt-0.5 sm:mt-0" />
+          <span>
+            <strong>Kenaikan / Mutasi Rombel Belajar:</strong> Siswa yang naik kelas atau pindah jenjang akan otomatis diperbarui kelasnya. Seluruh riwayat kunjungan UKS dan pemeriksaan gula darah terdahulu <strong>tetap tersimpan utuh dan tidak akan hilang</strong>.
+          </span>
+        </div>
+        <button
+          onClick={() => handleOpenPromote()}
+          className="shrink-0 text-[11px] font-bold text-indigo-700 hover:text-indigo-900 bg-white px-3 py-1.5 rounded-lg border border-indigo-200 shadow-2xs flex items-center gap-1.5 transition"
+        >
+          <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+          Proses Kenaikan Kelas
+        </button>
+      </div>
+
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
@@ -372,6 +516,13 @@ export const StudentsManagement: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleOpenPromote(std)}
+                            className="p-1.5 hover:bg-indigo-50 text-indigo-700 rounded-lg transition"
+                            title="Naik / Pindah Kelas Siswa Ini"
+                          >
+                            <TrendingUp className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handleOpenEdit(std)}
                             className="p-1.5 hover:bg-blue-50 text-blue-700 rounded-lg transition"
@@ -590,6 +741,247 @@ export const StudentsManagement: React.FC = () => {
                 Ya, Hapus Siswa
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Kenaikan & Pindah Kelas Siswa */}
+      {isPromoteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 bg-indigo-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-800 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-indigo-200" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Kenaikan & Mutasi Kelas Siswa</h3>
+                  <p className="text-[11px] text-indigo-200">
+                    Proses pemindahan rombel belajar atau naik jenjang kelas perorangan maupun massal
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPromoteModalOpen(false)}
+                className="p-1 text-indigo-200 hover:text-white rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecutePromotion} className="p-6 space-y-4 overflow-y-auto text-xs">
+              {promoteSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{promoteSuccessMsg}</span>
+                </div>
+              )}
+
+              {/* 1. Asal Kelas */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                  <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black">
+                    1
+                  </span>
+                  <span>Pilih Rombongan Belajar (Asal)</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-slate-600 block mb-1">Unit Sekolah Asal</label>
+                    <select
+                      value={promoteSourceUnitId}
+                      onChange={(e) => {
+                        setPromoteSourceUnitId(e.target.value);
+                        setPromoteSourceClassId('');
+                        setSelectedStudentIds([]);
+                      }}
+                      className="w-full text-xs border border-slate-300 rounded-xl p-2 bg-white"
+                    >
+                      <option value="">Semua Unit</option>
+                      {units.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.unit_code} - {u.unit_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-600 block mb-1">Kelas Asal</label>
+                    <select
+                      value={promoteSourceClassId}
+                      onChange={(e) => {
+                        setPromoteSourceClassId(e.target.value);
+                        setSelectedStudentIds([]);
+                      }}
+                      className="w-full text-xs border border-slate-300 rounded-xl p-2 bg-white"
+                    >
+                      <option value="">Semua Kelas</option>
+                      {promoteSourceClasses.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.class_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Daftar Siswa */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black">
+                      2
+                    </span>
+                    <span>Pilih Siswa yang Naik / Pindah Kelas</span>
+                    <span className="text-[11px] font-normal text-slate-500">
+                      ({selectedStudentIds.length} dari {candidatePromoteStudents.length} terpilih)
+                    </span>
+                  </div>
+
+                  {candidatePromoteStudents.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAllCandidates(candidatePromoteStudents.map((s) => s.id))}
+                      className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900"
+                    >
+                      {selectedStudentIds.length === candidatePromoteStudents.length
+                        ? 'Batalkan Semua'
+                        : 'Pilih Semua Siswa'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="border border-slate-200 rounded-xl max-h-44 overflow-y-auto divide-y divide-slate-100 bg-white">
+                  {candidatePromoteStudents.length === 0 ? (
+                    <div className="py-6 text-center text-slate-400">
+                      Tidak ada siswa pada unit & kelas asal yang dipilih.
+                    </div>
+                  ) : (
+                    candidatePromoteStudents.map((std) => {
+                      const isSelected = selectedStudentIds.includes(std.id);
+                      const stdCls = classes.find((c) => c.id === std.class_id);
+                      return (
+                        <div
+                          key={std.id}
+                          onClick={() => handleToggleSelectStudent(std.id)}
+                          className={`p-2.5 px-3 flex items-center justify-between cursor-pointer transition ${
+                            isSelected ? 'bg-indigo-50/70 font-bold text-indigo-950' : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectStudent(std.id)}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div>
+                              <div className="text-xs">{std.full_name}</div>
+                              <div className="text-[10px] font-mono text-slate-400">NIS: {std.employee_or_student_id}</div>
+                            </div>
+                          </div>
+                          <div className="text-[11px] font-medium text-slate-500">
+                            {stdCls?.class_name || 'Umum'}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* 3. Tujuan Kenaikan Kelas */}
+              <div className="bg-indigo-50/40 p-4 rounded-xl border border-indigo-200/80 space-y-3">
+                <div className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                  <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black">
+                    3
+                  </span>
+                  <span>Tujuan Kenaikan / Mutasi Rombel</span>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={isGraduate}
+                      onChange={(e) => setIsGraduate(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600"
+                    />
+                    <span>Tandai Siswa Telah Lulus Jenjang Akhir / Alumni (Non-aktifkan Rombel)</span>
+                  </label>
+                </div>
+
+                {!isGraduate && (
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Unit Sekolah Tujuan *</label>
+                      <select
+                        required
+                        value={promoteTargetUnitId}
+                        onChange={(e) => {
+                          setPromoteTargetUnitId(e.target.value);
+                          setPromoteTargetClassId('');
+                        }}
+                        className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white font-medium"
+                      >
+                        <option value="">Pilih Unit Sekolah</option>
+                        {units.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.unit_code} - {u.unit_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">Kelas Tujuan *</label>
+                      <select
+                        required
+                        value={promoteTargetClassId}
+                        onChange={(e) => setPromoteTargetClassId(e.target.value)}
+                        className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white font-medium"
+                      >
+                        <option value="">Pilih Kelas Tujuan</option>
+                        {promoteTargetClasses.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.class_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Informational note */}
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] flex items-start gap-2">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Keamanan Riwayat Medis:</strong> Seluruh riwayat kunjungan UKS, pemeriksaan gula darah, catatan alergi, dan tindak lanjut siswa di masa lalu tidak akan terhapus ataupun berubah, dan tetap melekat pada NIS siswa secara permanen.
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsPromoteModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={selectedStudentIds.length === 0}
+                  className="px-5 py-2 bg-indigo-700 hover:bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  Proses Kenaikan Kelas ({selectedStudentIds.length} Siswa)
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
