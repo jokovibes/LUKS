@@ -4,38 +4,13 @@
  * trend analytics, and executive reports without exposing private confidential notes.
  */
 
-import React, { useState } from 'react';
-import {
-  BarChart3,
-  Layers,
-  Activity,
-  HeartPulse,
-  TrendingUp,
-  Download,
-  Calendar,
-  Building2,
-  CheckCircle2,
-  ShieldCheck,
-  FileSpreadsheet,
-  Printer,
-} from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+import React from 'react';
+import { ShieldCheck, Printer, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DataService } from '../../services/dataService';
 import { ExportService } from '../../services/exportService';
 import { ComparativeHealthCharts } from './ComparativeHealthCharts';
+import { SchoolActivityOutcomeCharts } from './SchoolActivityOutcomeCharts';
 import { SchoolLetterhead } from '../common/SchoolLetterhead';
 
 interface PimpinanDashboardProps {
@@ -52,45 +27,9 @@ export const PimpinanDashboard: React.FC<PimpinanDashboardProps> = ({ onNavigate
   const units = DataService.getUnits();
   const repeatWarnings = DataService.getRepeatVisitWarnings();
 
-  // Aggregate metrics per School Unit
-  const unitStats = units.map((u) => {
-    const unitExams = exams.filter((e) => e.participant?.unit_id === u.id);
-    const unitVisits = visits.filter((v) => v.participant?.unit_id === u.id);
-    return {
-      name: u.unit_code,
-      unitFullName: u.unit_name,
-      totalExams: unitExams.length,
-      totalVisits: unitVisits.length,
-      attentionGlucose: unitExams.filter((e) => e.classification === 'perlu_perhatian' || e.classification === 'tindak_lanjut').length,
-    };
-  });
-
   // Follow-up completion percentage
   const completedFollowUps = followUps.filter((f) => f.follow_up_status === 'selesai').length;
   const followUpRate = followUps.length > 0 ? Math.round((completedFollowUps / followUps.length) * 100) : 100;
-
-  // Outcome distribution for management
-  const outcomesMap = new Map<string, number>();
-  visits.forEach((v) => {
-    const key = v.outcome || 'dalam_observasi';
-    outcomesMap.set(key, (outcomesMap.get(key) || 0) + 1);
-  });
-
-  const outcomeColors: Record<string, string> = {
-    kembali_ke_kelas: '#10b981',
-    kembali_bekerja: '#059669',
-    beristirahat_di_uks: '#3b82f6',
-    dijemput_keluarga: '#8b5cf6',
-    dipulangkan: '#f59e0b',
-    dirujuk: '#ef4444',
-    dalam_observasi: '#64748b',
-  };
-
-  const outcomePieData = Array.from(outcomesMap.entries()).map(([key, val]) => ({
-    name: key.replace(/_/g, ' '),
-    value: val,
-    color: outcomeColors[key] || '#94a3b8',
-  }));
 
   const handleExportManagerial = () => {
     const unitMap = new Map(units.map((u) => [u.id, u.unit_name]));
@@ -217,80 +156,7 @@ export const PimpinanDashboard: React.FC<PimpinanDashboardProps> = ({ onNavigate
       </div>
 
       {/* Recharts Managerial Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Unit Breakdown Bar Chart (7 cols) */}
-        <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-700" />
-              Perbandingan Aktivitas UKS Antar Unit Sekolah
-            </h3>
-            <span className="text-[10px] text-slate-400">Agregat Lazuardi</span>
-          </div>
-
-          <div className="h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={unitStats} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 11 }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const d = payload[0].payload;
-                      return (
-                        <div className="bg-slate-900 text-white p-2.5 rounded-xl text-xs space-y-1 shadow-lg">
-                          <div className="font-bold text-sky-300">{d.unitFullName}</div>
-                          <div>Kunjungan UKS: {d.totalVisits}</div>
-                          <div>Pemeriksaan Gula Darah: {d.totalExams}</div>
-                          <div>Perlu Pemantauan: {d.attentionGlucose}</div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                <Bar dataKey="totalVisits" name="Kunjungan UKS" fill="#0284c7" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="totalExams" name="Pemeriksaan Glukosa" fill="#10b981" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Outcome Pie Chart (5 cols) */}
-        <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-purple-700" />
-              Distribusi Hasil Penanganan Kunjungan
-            </h3>
-          </div>
-
-          <div className="h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={outcomePieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={3}
-                  dataKey="value"
-                  label={({ percent }: { percent?: number }) => `${(((percent ?? 0) * 100)).toFixed(0)}%`}
-                >
-                  {outcomePieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+      <SchoolActivityOutcomeCharts exams={exams} visits={visits} />
 
       {/* STATISTIK PEMERIKSAAN GULA DARAH, KUNJUNGAN UKS, & TINDAK LANJUT (SISWA VS GURU & KARYAWAN) */}
       <ComparativeHealthCharts currentUser={currentUser} exams={exams} visits={visits} />

@@ -3,8 +3,8 @@
  * Digunakan secara konsisten pada Dashboard Administrator, Petugas UKS, dan Pimpinan.
  */
 
-import React from 'react';
-import { Layers, Activity, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { Layers, Activity, Info, GraduationCap, Briefcase, Users } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -33,21 +33,49 @@ export const SchoolActivityOutcomeCharts: React.FC<SchoolActivityOutcomeChartsPr
   titleSuffix,
 }) => {
   const units = DataService.getUnits();
+  const [categoryFilter, setCategoryFilter] = useState<'semua' | 'siswa' | 'karyawan'>('semua');
+  const [displayMode, setDisplayMode] = useState<'grouped' | 'stacked'>('grouped');
 
-  // 1. Data Perbandingan Aktivitas UKS Antar Unit Sekolah
+  const isEmployeeExam = (e: GlucoseExamination) =>
+    e.participant?.category === 'karyawan' || (e as any).participant_category === 'karyawan';
+  const isStudentExam = (e: GlucoseExamination) => !isEmployeeExam(e);
+
+  const isEmployeeVisit = (v: UksVisit) =>
+    v.participant?.category === 'karyawan' || (v as any).patient_category === 'karyawan';
+  const isStudentVisit = (v: UksVisit) => !isEmployeeVisit(v);
+
+  // 1. Data Perbandingan Aktivitas UKS Antar Unit Sekolah (Dipisahkan Siswa vs Karyawan)
   const unitStats = units.map((u) => {
-    const unitExams = exams.filter((e) => e.participant?.unit_id === u.id);
-    const unitVisits = visits.filter((v) => v.participant?.unit_id === u.id);
+    const unitExams = exams.filter(
+      (e) => e.participant?.unit_id === u.id || (e as any).unit_id === u.id
+    );
+    const unitVisits = visits.filter(
+      (v) => v.participant?.unit_id === u.id || (v as any).unit_id === u.id
+    );
+
+    const studentVisits = unitVisits.filter(isStudentVisit).length;
+    const employeeVisits = unitVisits.filter(isEmployeeVisit).length;
+
+    const studentExams = unitExams.filter(isStudentExam).length;
+    const employeeExams = unitExams.filter(isEmployeeExam).length;
+
     return {
       name: u.unit_code,
       unitFullName: u.unit_name,
-      totalExams: unitExams.length,
+      studentVisits,
+      employeeVisits,
       totalVisits: unitVisits.length,
-      attentionGlucose: unitExams.filter(
-        (e) => e.classification === 'perlu_perhatian' || e.classification === 'tindak_lanjut'
-      ).length,
+      studentExams,
+      employeeExams,
+      totalExams: unitExams.length,
     };
   });
+
+  // Overall sums
+  const totalStudentVisits = unitStats.reduce((acc, u) => acc + u.studentVisits, 0);
+  const totalEmployeeVisits = unitStats.reduce((acc, u) => acc + u.employeeVisits, 0);
+  const totalStudentExams = unitStats.reduce((acc, u) => acc + u.studentExams, 0);
+  const totalEmployeeExams = unitStats.reduce((acc, u) => acc + u.employeeExams, 0);
 
   // 2. Data Distribusi Hasil Penanganan Kunjungan
   const outcomesMap = new Map<string, number>();
@@ -88,20 +116,89 @@ export const SchoolActivityOutcomeCharts: React.FC<SchoolActivityOutcomeChartsPr
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* 1. Bar Chart: Perbandingan Aktivitas UKS Antar Unit Sekolah (7 cols) */}
-      <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-700" />
-              Perbandingan Aktivitas UKS Antar Unit Sekolah {titleSuffix ? `(${titleSuffix})` : ''}
-            </h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Komparasi volume kunjungan UKS dan pemeriksaan glukosa lintas jenjang TK, SD, SMP, SMA
-            </p>
+      <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3 flex flex-col justify-between">
+        <div className="flex flex-col gap-2.5 border-b border-slate-100 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-blue-700" />
+                Perbandingan Aktivitas UKS Antar Unit Sekolah {titleSuffix ? `(${titleSuffix})` : ''}
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Pemisahan volume kunjungan UKS dan pemeriksaan glukosa antara siswa dan guru/karyawan
+              </p>
+            </div>
+            <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 shrink-0 self-start sm:self-auto">
+              {units.length} Unit Sekolah
+            </span>
           </div>
-          <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 shrink-0 self-start sm:self-auto">
-            {units.length} Unit Sekolah
-          </span>
+
+          {/* Filter Pills: Kategori Siswa vs Karyawan & Mode Batang */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="inline-flex p-0.5 bg-slate-100 rounded-xl text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => setCategoryFilter('semua')}
+                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                  categoryFilter === 'semua'
+                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 text-slate-500" />
+                Semua (Terpisah)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCategoryFilter('siswa')}
+                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                  categoryFilter === 'siswa'
+                    ? 'bg-sky-700 text-white shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                Hanya Siswa ({totalStudentVisits + totalStudentExams})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCategoryFilter('karyawan')}
+                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                  categoryFilter === 'karyawan'
+                    ? 'bg-indigo-700 text-white shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                Hanya Karyawan ({totalEmployeeVisits + totalEmployeeExams})
+              </button>
+            </div>
+
+            {categoryFilter === 'semua' && (
+              <div className="inline-flex p-0.5 bg-slate-100 rounded-xl text-[10px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('grouped')}
+                  className={`px-2 py-0.5 rounded-lg transition ${
+                    displayMode === 'grouped' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500'
+                  }`}
+                  title="Tampilkan batang berdampingan"
+                >
+                  Berjajar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('stacked')}
+                  className={`px-2 py-0.5 rounded-lg transition ${
+                    displayMode === 'stacked' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500'
+                  }`}
+                  title="Tampilkan batang bertumpuk total"
+                >
+                  Bertumpuk
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="h-64 w-full pt-2">
@@ -115,11 +212,58 @@ export const SchoolActivityOutcomeCharts: React.FC<SchoolActivityOutcomeChartsPr
                   if (active && payload && payload.length) {
                     const d = payload[0].payload;
                     return (
-                      <div className="bg-slate-900 text-white p-2.5 rounded-xl text-xs space-y-1 shadow-lg">
-                        <div className="font-bold text-sky-300">{d.unitFullName}</div>
-                        <div>Kunjungan UKS: <span className="font-bold">{d.totalVisits}</span></div>
-                        <div>Pemeriksaan Glukosa: <span className="font-bold">{d.totalExams}</span></div>
-                        <div>Perlu Perhatian: <span className="font-bold text-amber-300">{d.attentionGlucose}</span></div>
+                      <div className="bg-slate-900 text-white p-3 rounded-xl text-xs space-y-2 shadow-xl border border-slate-700 min-w-[210px]">
+                        <div className="font-bold text-sky-300 border-b border-slate-700 pb-1 flex items-center justify-between">
+                          <span>{d.unitFullName}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">({d.name})</span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Aktivitas Kunjungan UKS
+                          </div>
+                          <div className="flex justify-between items-center text-sky-200">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-sky-400 inline-block"></span>
+                              Siswa:
+                            </span>
+                            <span className="font-bold">{d.studentVisits}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-indigo-200">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block"></span>
+                              Guru & Karyawan:
+                            </span>
+                            <span className="font-bold">{d.employeeVisits}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-300 font-semibold border-t border-slate-800 pt-0.5 text-[11px]">
+                            <span>Total Kunjungan:</span>
+                            <span>{d.totalVisits}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1 pt-1 border-t border-slate-700">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Pemeriksaan Gula Darah
+                          </div>
+                          <div className="flex justify-between items-center text-emerald-200">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                              Siswa:
+                            </span>
+                            <span className="font-bold">{d.studentExams}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-amber-200">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+                              Guru & Karyawan:
+                            </span>
+                            <span className="font-bold">{d.employeeExams}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-300 font-semibold border-t border-slate-800 pt-0.5 text-[11px]">
+                            <span>Total Pemeriksaan:</span>
+                            <span>{d.totalExams}</span>
+                          </div>
+                        </div>
                       </div>
                     );
                   }
@@ -127,8 +271,56 @@ export const SchoolActivityOutcomeCharts: React.FC<SchoolActivityOutcomeChartsPr
                 }}
               />
               <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-              <Bar dataKey="totalVisits" name="Kunjungan UKS" fill="#0284c7" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="totalExams" name="Pemeriksaan Glukosa" fill="#10b981" radius={[6, 6, 0, 0]} />
+
+              {/* Mode: Semua (Terpisah) */}
+              {categoryFilter === 'semua' && (
+                <>
+                  <Bar
+                    dataKey="studentVisits"
+                    name="Kunjungan Siswa"
+                    fill="#0284c7"
+                    stackId={displayMode === 'stacked' ? 'visits' : undefined}
+                    radius={displayMode === 'stacked' ? [0, 0, 0, 0] : [4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="employeeVisits"
+                    name="Kunjungan Karyawan"
+                    fill="#6366f1"
+                    stackId={displayMode === 'stacked' ? 'visits' : undefined}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="studentExams"
+                    name="Glukosa Siswa"
+                    fill="#10b981"
+                    stackId={displayMode === 'stacked' ? 'exams' : undefined}
+                    radius={displayMode === 'stacked' ? [0, 0, 0, 0] : [4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="employeeExams"
+                    name="Glukosa Karyawan"
+                    fill="#f59e0b"
+                    stackId={displayMode === 'stacked' ? 'exams' : undefined}
+                    radius={[4, 4, 0, 0]}
+                  />
+                </>
+              )}
+
+              {/* Mode: Hanya Siswa */}
+              {categoryFilter === 'siswa' && (
+                <>
+                  <Bar dataKey="studentVisits" name="Kunjungan UKS Siswa" fill="#0284c7" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="studentExams" name="Pemeriksaan Glukosa Siswa" fill="#10b981" radius={[6, 6, 0, 0]} />
+                </>
+              )}
+
+              {/* Mode: Hanya Karyawan */}
+              {categoryFilter === 'karyawan' && (
+                <>
+                  <Bar dataKey="employeeVisits" name="Kunjungan UKS Guru & Karyawan" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="employeeExams" name="Pemeriksaan Glukosa Guru & Karyawan" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                </>
+              )}
             </BarChart>
           </ResponsiveContainer>
         </div>

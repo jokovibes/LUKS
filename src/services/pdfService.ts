@@ -1129,16 +1129,36 @@ export class PdfService {
             { id: 'unit-sma', unit_name: 'SMA Lazuardi Compassionate', unit_code: 'SMA', is_active: true },
           ];
 
-    // Data for Bar Chart: Aktivitas Antar Unit
+    // Helper untuk memisahkan kategori Siswa vs Karyawan/Guru
+    const isEmpVisit = (v: UksVisit) =>
+      v.participant?.category === 'karyawan' || (v as any).patient_category === 'karyawan';
+    const isEmpExam = (e: GlucoseExamination) =>
+      e.participant?.category === 'karyawan' || (e as any).participant_category === 'karyawan';
+
+    // Data for Bar Chart: Aktivitas Antar Unit (Pemisahan Siswa & Karyawan)
     const unitCodes = units.map((u) => u.unit_code);
-    const unitVisitsCount = units.map((u) => data.visits.filter((v) => v.participant?.unit_id === u.id).length);
-    const unitExamsCount = units.map((u) => data.exams.filter((e) => e.participant?.unit_id === u.id).length);
-    const unitAttentionCount = units.map(
+    const unitVisitsSiswa = units.map(
+      (u) =>
+        data.visits.filter(
+          (v) => (v.participant?.unit_id === u.id || (v as any).unit_id === u.id) && !isEmpVisit(v)
+        ).length
+    );
+    const unitVisitsKaryawan = units.map(
+      (u) =>
+        data.visits.filter(
+          (v) => (v.participant?.unit_id === u.id || (v as any).unit_id === u.id) && isEmpVisit(v)
+        ).length
+    );
+    const unitExamsSiswa = units.map(
       (u) =>
         data.exams.filter(
-          (e) =>
-            e.participant?.unit_id === u.id &&
-            (e.classification === 'perlu_perhatian' || e.classification === 'tindak_lanjut')
+          (e) => (e.participant?.unit_id === u.id || (e as any).unit_id === u.id) && !isEmpExam(e)
+        ).length
+    );
+    const unitExamsKaryawan = units.map(
+      (u) =>
+        data.exams.filter(
+          (e) => (e.participant?.unit_id === u.id || (e as any).unit_id === u.id) && isEmpExam(e)
         ).length
     );
 
@@ -1175,20 +1195,21 @@ export class PdfService {
     ];
 
     // GAMBAR DUA GRAFIK BERSEBELAHAN (SIDE-BY-SIDE):
-    // Kiri: Grouped Bar Chart (width: 104mm, height: 55mm)
+    // Kiri: Grouped Bar Chart (width: 104mm, height: 55mm) - Siswa vs Karyawan
     this.drawGroupedBarChart(
       doc,
       14,
       currentY,
       104,
       55,
-      'Aktivitas UKS Antar Unit Sekolah',
-      'Komparasi Kunjungan, Skrining Glukosa, dan Perhatian Khusus per Unit',
+      'Aktivitas UKS Antar Unit',
+      'Pemisahan Kunjungan & Skrining Glukosa (Siswa vs Karyawan)',
       unitCodes,
       [
-        { name: 'Kunjungan UKS', color: [2, 132, 199], data: unitVisitsCount },
-        { name: 'Skrining Glukosa', color: [16, 185, 129], data: unitExamsCount },
-        { name: 'Perlu Perhatian', color: [239, 68, 68], data: unitAttentionCount },
+        { name: 'Kunj. Siswa', color: [2, 132, 199], data: unitVisitsSiswa },
+        { name: 'Kunj. Kary.', color: [99, 102, 241], data: unitVisitsKaryawan },
+        { name: 'Gula Siswa', color: [16, 185, 129], data: unitExamsSiswa },
+        { name: 'Gula Kary.', color: [245, 158, 11], data: unitExamsKaryawan },
       ]
     );
 
@@ -1207,37 +1228,55 @@ export class PdfService {
 
     currentY += 59;
 
-    // 3. Tabel 1: Komparasi Aktivitas UKS Antar Unit Sekolah
+    // 3. Tabel 1: Komparasi Aktivitas UKS Antar Unit Sekolah (Rincian Siswa & Karyawan)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
-    doc.text('1. Tabel Rekapitulasi Komparasi Antar Unit Sekolah', 14, currentY);
+    doc.text('1. Tabel Rekapitulasi Komparasi Antar Unit Sekolah (Siswa & Karyawan)', 14, currentY);
 
     const unitComparisonRows = units.map((u, idx) => {
-      const unitVisits = data.visits.filter((v) => v.participant?.unit_id === u.id);
-      const unitExams = data.exams.filter((e) => e.participant?.unit_id === u.id);
-      const attention = unitExams.filter(
-        (e) => e.classification === 'perlu_perhatian' || e.classification === 'tindak_lanjut'
-      ).length;
+      const uVisits = data.visits.filter(
+        (v) => v.participant?.unit_id === u.id || (v as any).unit_id === u.id
+      );
+      const vSiswa = uVisits.filter((v) => !isEmpVisit(v)).length;
+      const vKary = uVisits.filter((v) => isEmpVisit(v)).length;
+
+      const uExams = data.exams.filter(
+        (e) => e.participant?.unit_id === u.id || (e as any).unit_id === u.id
+      );
+      const eSiswa = uExams.filter((e) => !isEmpExam(e)).length;
+      const eKary = uExams.filter((e) => isEmpExam(e)).length;
 
       return [
         idx + 1,
         u.unit_code,
         u.unit_name,
-        unitVisits.length,
-        unitExams.length,
-        attention,
-        unitVisits.filter((v) => v.outcome === 'dirujuk').length,
+        `${vSiswa} Siswa`,
+        `${vKary} Kary.`,
+        `${eSiswa} Siswa`,
+        `${eKary} Kary.`,
+        uVisits.filter((v) => v.outcome === 'dirujuk').length,
       ];
     });
 
     autoTable(doc, {
       startY: currentY + 2.5,
-      head: [['No', 'Kode', 'Nama Unit Sekolah', 'Kunjungan UKS', 'Skrining Glukosa', 'Perlu Perhatian', 'Rujukan']],
+      head: [
+        [
+          'No',
+          'Kode',
+          'Nama Unit Sekolah',
+          'Kunj. Siswa',
+          'Kunj. Kary.',
+          'Glukosa Siswa',
+          'Glukosa Kary.',
+          'Rujukan',
+        ],
+      ],
       body: unitComparisonRows,
       theme: 'grid',
-      headStyles: { fillColor: [30, 58, 138], fontSize: 6.8, fontStyle: 'bold', halign: 'center' },
-      styles: { fontSize: 6.5, cellPadding: 1.8, halign: 'center' },
+      headStyles: { fillColor: [30, 58, 138], fontSize: 6.5, fontStyle: 'bold', halign: 'center' },
+      styles: { fontSize: 6.2, cellPadding: 1.6, halign: 'center' },
       columnStyles: {
         2: { halign: 'left', fontStyle: 'bold' },
       },
