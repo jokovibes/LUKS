@@ -25,6 +25,7 @@ import {
   Square,
   Users,
   Info,
+  Mail,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DataService } from '../../services/dataService';
@@ -495,7 +496,13 @@ export const StudentsManagement: React.FC = () => {
                       <td className="py-3.5 px-4 font-mono font-bold text-blue-900">
                         {std.employee_or_student_id}
                       </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">{std.full_name}</td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-900">{std.full_name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                          <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span>{std.email}</span>
+                        </div>
+                      </td>
                       <td className="py-3.5 px-4 text-slate-700">
                         {unit?.unit_code} - {cls?.class_name || 'Umum'}
                       </td>
@@ -571,10 +578,37 @@ export const StudentsManagement: React.FC = () => {
                   type="text"
                   required
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFullName(val);
+                    if (!editingStudent && (!email || email.endsWith('@siswa.lazuardi.sch.id'))) {
+                      const clean = val.toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.').replace(/^\.|\.$/g, '');
+                      if (clean) setEmail(`${clean}@siswa.lazuardi.sch.id`);
+                    }
+                  }}
                   placeholder="Nama lengkap sesuai akta lahir..."
                   className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Email Akun Siswa (Login & Google) *
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="nama@siswa.lazuardi.sch.id"
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Email akun ini digunakan untuk login siswa dan integrasi Google (langsung aktif tanpa perlu diedit ulang di Manajemen Pengguna).
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -612,13 +646,13 @@ export const StudentsManagement: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Email Siswa (Opsional)</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Nomor Telepon Siswa</label>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nama@siswa.lazuardi.sch.id"
-                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
+                    type="text"
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder="0812-xxxx-xxxx"
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 font-mono"
                   />
                 </div>
               </div>

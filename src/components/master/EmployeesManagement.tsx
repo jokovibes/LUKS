@@ -20,6 +20,7 @@ import {
   Building2,
   ArrowRightLeft,
   Info,
+  Mail,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DataService } from '../../services/dataService';
@@ -483,10 +484,37 @@ export const EmployeesManagement: React.FC = () => {
                   type="text"
                   required
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFullName(val);
+                    if (!editingEmployee && (!email || email.endsWith('@lazuardi.sch.id'))) {
+                      const clean = val.toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+/g, '.').replace(/^\.|\.$/g, '');
+                      if (clean) setEmail(`${clean}@lazuardi.sch.id`);
+                    }
+                  }}
                   placeholder="Contoh: Budi Santoso, M.Pd"
                   className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Email Akun Guru / Karyawan (Login & Google) *
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="nama.karyawan@lazuardi.sch.id"
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-purple-600 focus:outline-hidden"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Email ini digunakan untuk login sistem LUKS dan Google Workspace (langsung aktif tanpa perlu diedit ulang di Manajemen Pengguna).
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
