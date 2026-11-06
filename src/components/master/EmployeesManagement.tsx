@@ -43,6 +43,7 @@ export const EmployeesManagement: React.FC = () => {
   const [workUnit, setWorkUnit] = useState('');
   const [role, setRole] = useState<'karyawan' | 'petugas_uks' | 'admin' | 'pimpinan'>('karyawan');
   const [contact, setContact] = useState('');
+  const [dob, setDob] = useState('');
 
   const units = DataService.getUnits();
   const employees = React.useMemo(() => {
@@ -71,6 +72,7 @@ export const EmployeesManagement: React.FC = () => {
     setEmployeeId(`NIY-${new Date().getFullYear()}.${Math.floor(10 + Math.random() * 89)}.${Math.floor(100 + Math.random() * 899)}`);
     setEmail('');
     setGender('L');
+    setDob('1988-08-17');
     setUnitId(units[0]?.id || '');
     setWorkUnit('Guru Mata Pelajaran');
     setRole('karyawan');
@@ -84,6 +86,7 @@ export const EmployeesManagement: React.FC = () => {
     setEmployeeId(emp.employee_or_student_id);
     setEmail(emp.email);
     setGender(emp.gender);
+    setDob(emp.date_of_birth || '');
     setUnitId(emp.unit_id);
     setWorkUnit(emp.work_unit || '');
     setRole(emp.role as any);
@@ -106,6 +109,7 @@ export const EmployeesManagement: React.FC = () => {
         unit_id: unitId,
         work_unit: workUnit,
         gender,
+        date_of_birth: dob || undefined,
         contact_information: contact,
         is_active: true,
         created_at: editingEmployee ? editingEmployee.created_at : new Date().toISOString(),
@@ -150,9 +154,19 @@ export const EmployeesManagement: React.FC = () => {
       const unitCode = row[4]?.trim().toUpperCase();
       const position = row[5]?.trim();
       const genderRaw = row[6]?.trim().toUpperCase();
-      const phone = row[7]?.trim();
-      const emgContact = row[8]?.trim();
-      const emgPhone = row[9]?.trim();
+      const dobRaw = row[7]?.trim();
+      const phone = row[8]?.trim();
+      const emgContact = row[9]?.trim();
+      const emgPhone = row[10]?.trim();
+
+      // Check if row[7] is a date (YYYY-MM-DD) or old format where row[7] was phone
+      let dobVal: string | undefined = undefined;
+      let phoneVal = phone;
+      if (dobRaw && /^\d{4}-\d{2}-\d{2}$/.test(dobRaw)) {
+        dobVal = dobRaw;
+      } else if (dobRaw && !phone) {
+        phoneVal = dobRaw;
+      }
 
       if (!empName) {
         errors.push(`Baris ${lineNum}: Nama karyawan wajib diisi.`);
@@ -180,7 +194,8 @@ export const EmployeesManagement: React.FC = () => {
             unit_id: assignedUnitId,
             work_unit: position || undefined,
             gender: genderRaw === 'P' ? 'P' : 'L',
-            contact_information: phone || undefined,
+            date_of_birth: dobVal,
+            contact_information: phoneVal || undefined,
             emergency_contact: emgContact || undefined,
             emergency_phone: emgPhone || undefined,
             is_active: true,
@@ -276,6 +291,7 @@ export const EmployeesManagement: React.FC = () => {
               <tr>
                 <th className="py-3.5 px-4">NIY</th>
                 <th className="py-3.5 px-4">Nama Lengkap</th>
+                <th className="py-3.5 px-4">Tanggal Lahir</th>
                 <th className="py-3.5 px-4">Unit Kerja & Penugasan</th>
                 <th className="py-3.5 px-4">Hak Akses Role</th>
                 <th className="py-3.5 px-4">Kontak Telepon</th>
@@ -283,44 +299,61 @@ export const EmployeesManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filtered.map((emp) => (
-                <tr key={emp.id} className="hover:bg-slate-50 transition">
-                  <td className="py-3.5 px-4 font-mono font-bold text-purple-950">
-                    {emp.employee_or_student_id}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-900">{emp.full_name}</div>
-                    <div className="text-[10px] text-slate-400">{emp.email}</div>
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-700">{emp.work_unit || '-'}</td>
-                  <td className="py-3.5 px-4">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-800">
-                      {emp.role.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
-                    {emp.contact_information || '-'}
-                  </td>
-                  <td className="py-3.5 px-4 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={() => handleOpenEdit(emp)}
-                        className="p-1.5 hover:bg-purple-50 text-purple-700 rounded-lg transition"
-                        title="Ubah Data Karyawan"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setEmployeeToDelete(emp)}
-                        className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition"
-                        title="Hapus Data Karyawan"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-10 text-center text-slate-400">
+                    Tidak ditemukan data guru atau karyawan.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((emp) => (
+                  <tr key={emp.id} className="hover:bg-slate-50 transition">
+                    <td className="py-3.5 px-4 font-mono font-bold text-purple-950">
+                      {emp.employee_or_student_id}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-slate-900">{emp.full_name}</div>
+                      <div className="text-[10px] text-slate-400">{emp.email}</div>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-slate-700">
+                      {emp.date_of_birth
+                        ? new Date(emp.date_of_birth).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })
+                        : '-'}
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-700">{emp.work_unit || '-'}</td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-800">
+                        {emp.role.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
+                      {emp.contact_information || '-'}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(emp)}
+                          className="p-1.5 hover:bg-purple-50 text-purple-700 rounded-lg transition"
+                          title="Ubah Data Karyawan"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setEmployeeToDelete(emp)}
+                          className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition"
+                          title="Hapus Data Karyawan"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -367,6 +400,18 @@ export const EmployeesManagement: React.FC = () => {
                   />
                 </div>
                 <div>
+                  <label className="font-bold text-slate-700 block mb-1">Tanggal Lahir</label>
+                  <input
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="font-bold text-slate-700 block mb-1">Jenis Kelamin</label>
                   <select
                     value={gender}
@@ -377,17 +422,16 @@ export const EmployeesManagement: React.FC = () => {
                     <option value="P">Perempuan</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Unit Kerja / Jabatan</label>
-                <input
-                  type="text"
-                  value={workUnit}
-                  onChange={(e) => setWorkUnit(e.target.value)}
-                  placeholder="Contoh: Guru Fisika SMA, Petugas UKS, Staff TU..."
-                  className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
-                />
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Unit Kerja / Jabatan</label>
+                  <input
+                    type="text"
+                    value={workUnit}
+                    onChange={(e) => setWorkUnit(e.target.value)}
+                    placeholder="Contoh: Guru Fisika SMA, Petugas UKS, Staff TU..."
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -512,6 +556,7 @@ export const EmployeesManagement: React.FC = () => {
           'Kode Unit (TK/SD/SMP/SMA)',
           'Unit Kerja',
           'Jenis Kelamin (L/P)',
+          'Tanggal Lahir (YYYY-MM-DD)',
           'No Telepon',
           'Kontak Darurat',
           'HP Darurat',

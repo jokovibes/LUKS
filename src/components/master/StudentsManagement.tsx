@@ -329,6 +329,7 @@ export const StudentsManagement: React.FC = () => {
                 <th className="py-3.5 px-4">NIS</th>
                 <th className="py-3.5 px-4">Nama Siswa</th>
                 <th className="py-3.5 px-4">Unit & Kelas</th>
+                <th className="py-3.5 px-4">Tanggal Lahir</th>
                 <th className="py-3.5 px-4">Jenis Kelamin</th>
                 <th className="py-3.5 px-4">Kontak Darurat Ortu</th>
                 <th className="py-3.5 px-4 text-center">Aksi</th>
@@ -337,7 +338,7 @@ export const StudentsManagement: React.FC = () => {
             <tbody className="divide-y divide-slate-100 font-medium">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-slate-400">
+                  <td colSpan={7} className="py-10 text-center text-slate-400">
                     Tidak ditemukan data siswa.
                   </td>
                 </tr>
@@ -353,6 +354,15 @@ export const StudentsManagement: React.FC = () => {
                       <td className="py-3.5 px-4 font-bold text-slate-900">{std.full_name}</td>
                       <td className="py-3.5 px-4 text-slate-700">
                         {unit?.unit_code} - {cls?.class_name || 'Umum'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-700">
+                        {std.date_of_birth
+                          ? new Date(std.date_of_birth).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : '-'}
                       </td>
                       <td className="py-3.5 px-4">
                         {std.gender === 'L' ? 'Laki-laki' : 'Perempuan'}
@@ -428,6 +438,18 @@ export const StudentsManagement: React.FC = () => {
                   />
                 </div>
                 <div>
+                  <label className="font-bold text-slate-700 block mb-1">Tanggal Lahir</label>
+                  <input
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5 bg-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="font-bold text-slate-700 block mb-1">Jenis Kelamin</label>
                   <select
                     value={gender}
@@ -437,6 +459,16 @@ export const StudentsManagement: React.FC = () => {
                     <option value="L">Laki-laki</option>
                     <option value="P">Perempuan</option>
                   </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Email Siswa (Opsional)</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="nama@siswa.lazuardi.sch.id"
+                    className="w-full text-xs border border-slate-300 rounded-xl p-2.5"
+                  />
                 </div>
               </div>
 

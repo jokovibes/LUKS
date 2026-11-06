@@ -146,16 +146,17 @@ export class CsvService {
       'Kode Unit (TK/SD/SMP/SMA)',
       'Unit Kerja / Posisi',
       'Jenis Kelamin (L/P)',
+      'Tanggal Lahir (YYYY-MM-DD)',
       'No Telepon',
       'Nama Kontak Darurat',
       'No HP Darurat',
     ];
 
     const sampleRows = [
-      ['Drs. Hendro Wibowo, M.Si', 'NIY-2026-011', 'hendro.wibowo@lazuardi.sch.id', 'karyawan', 'SMA', 'Guru Fisika & Wakil Kurikulum', 'L', '081311223344', 'Ibu Retno', '081399887766'],
-      ['Siti Khadijah, S.Pd', 'NIY-2026-012', 'siti.khadijah@lazuardi.sch.id', 'karyawan', 'SD', 'Wali Kelas 1 SD', 'P', '081311223345', 'Bapak Yusuf', '081399887767'],
-      ['Ns. Ratna Wulandari, A.Md.Kep', 'NIY-2026-013', 'ratna.uks@lazuardi.sch.id', 'petugas_uks', 'SMP', 'Petugas UKS SMP', 'P', '081311223346', 'Bapak Wawan', '081399887768'],
-      ['Ir. Bambang Sutejo', 'NIY-2026-014', 'bambang.sutejo@lazuardi.sch.id', 'pimpinan', 'SMA', 'Kepala Sekolah SMA', 'L', '081311223347', 'Ibu Diana', '081399887769'],
+      ['Drs. Hendro Wibowo, M.Si', 'NIY-2026-011', 'hendro.wibowo@lazuardi.sch.id', 'karyawan', 'SMA', 'Guru Fisika & Wakil Kurikulum', 'L', '1980-04-12', '081311223344', 'Ibu Retno', '081399887766'],
+      ['Siti Khadijah, S.Pd', 'NIY-2026-012', 'siti.khadijah@lazuardi.sch.id', 'karyawan', 'SD', 'Wali Kelas 1 SD', 'P', '1987-11-23', '081311223345', 'Bapak Yusuf', '081399887767'],
+      ['Ns. Ratna Wulandari, A.Md.Kep', 'NIY-2026-013', 'ratna.uks@lazuardi.sch.id', 'petugas_uks', 'SMP', 'Petugas UKS SMP', 'P', '1992-06-19', '081311223346', 'Bapak Wawan', '081399887768'],
+      ['Ir. Bambang Sutejo', 'NIY-2026-014', 'bambang.sutejo@lazuardi.sch.id', 'pimpinan', 'SMA', 'Kepala Sekolah SMA', 'L', '1975-02-08', '081311223347', 'Ibu Diana', '081399887769'],
     ];
 
     const csvString = [
