@@ -146,26 +146,7 @@ class SupabaseSyncServiceClass {
       this.syncStatus.isConnected = true;
       this.syncStatus.errorMessage = undefined;
 
-      // Check if remote database needs seeding
-      const { data: profileCheck } = await supabase.from('profiles').select('id').limit(1);
-      if (!profileCheck || profileCheck.length === 0) {
-        await this.seedRemoteDatabase();
-      } else {
-        // Ensure system settings exist in Supabase even if profiles were seeded
-        const { data: settingsCheck } = await supabase.from('system_settings').select('id').limit(1);
-        if (!settingsCheck || settingsCheck.length === 0) {
-          const settingsPayload = INITIAL_SYSTEM_SETTINGS.map((s) => ({
-            id: ensureUuid(s.id),
-            setting_key: s.setting_key,
-            setting_value: s.setting_value,
-            setting_description: s.setting_description || null,
-            updated_by: s.updated_by || null,
-            updated_at: s.updated_at || new Date().toISOString(),
-          }));
-          await supabase.from('system_settings').upsert(settingsPayload, { onConflict: 'setting_key' });
-        }
-      }
-
+      // Tidak ada inisialisasi data dummy; data sepenuhnya mengacu pada database Supabase
       // Pull latest from Supabase into local memory
       await this.pullAllFromSupabase();
 
@@ -425,54 +406,41 @@ class SupabaseSyncServiceClass {
 
       let count = 0;
 
-      if (units && units.length > 0) {
-        localDb.setUnits(units as SchoolUnit[]);
-        count += units.length;
-      }
-      if (classes && classes.length > 0) {
-        localDb.setClasses(classes as SchoolClass[]);
-        count += classes.length;
-      }
-      if (profiles && profiles.length > 0) {
-        localDb.setProfiles(profiles as UserProfile[]);
-        count += profiles.length;
-      }
-      if (healthParams && healthParams.length > 0) {
-        localDb.setHealthParams(healthParams as HealthClassificationParameter[]);
-        count += healthParams.length;
-      }
-      if (exams) {
-        localDb.setGlucoseExams(exams as GlucoseExamination[]);
-        count += exams.length;
-      }
-      if (examFollowUps) {
-        localDb.setGlucoseFollowUps(examFollowUps as GlucoseFollowUp[]);
-        count += examFollowUps.length;
-      }
-      if (visits && visits.length > 0) {
-        localDb.setUksVisits(visits as UksVisit[]);
-        count += visits.length;
-      }
-      if (assessments && assessments.length > 0) {
-        localDb.setUksAssessments(assessments as UksAssessment[]);
-        count += assessments.length;
-      }
-      if (visitFollowUps) {
-        localDb.setUksFollowUps(visitFollowUps as UksFollowUp[]);
-        count += visitFollowUps.length;
-      }
-      if (settings && settings.length > 0) {
-        localDb.setSystemSettings(settings as SystemSetting[]);
-        count += settings.length;
-      }
-      if (auditLogs && auditLogs.length > 0) {
-        localDb.setAuditLogs(auditLogs as AuditLog[]);
-        count += auditLogs.length;
-      }
-      if (notifs && notifs.length > 0) {
-        localDb.setNotifications(notifs as AppNotification[]);
-        count += notifs.length;
-      }
+      localDb.setUnits((units as SchoolUnit[]) || []);
+      if (units) count += units.length;
+
+      localDb.setClasses((classes as SchoolClass[]) || []);
+      if (classes) count += classes.length;
+
+      localDb.setProfiles((profiles as UserProfile[]) || []);
+      if (profiles) count += profiles.length;
+
+      localDb.setHealthParams((healthParams as HealthClassificationParameter[]) || []);
+      if (healthParams) count += healthParams.length;
+
+      localDb.setGlucoseExams((exams as GlucoseExamination[]) || []);
+      if (exams) count += exams.length;
+
+      localDb.setGlucoseFollowUps((examFollowUps as GlucoseFollowUp[]) || []);
+      if (examFollowUps) count += examFollowUps.length;
+
+      localDb.setUksVisits((visits as UksVisit[]) || []);
+      if (visits) count += visits.length;
+
+      localDb.setUksAssessments((assessments as UksAssessment[]) || []);
+      if (assessments) count += assessments.length;
+
+      localDb.setUksFollowUps((visitFollowUps as UksFollowUp[]) || []);
+      if (visitFollowUps) count += visitFollowUps.length;
+
+      localDb.setSystemSettings((settings as SystemSetting[]) || []);
+      if (settings) count += settings.length;
+
+      localDb.setAuditLogs((auditLogs as AuditLog[]) || []);
+      if (auditLogs) count += auditLogs.length;
+
+      localDb.setNotifications((notifs as AppNotification[]) || []);
+      if (notifs) count += notifs.length;
 
       this.syncStatus.totalRecordsSynced = count;
       this.syncStatus.isConnected = true;

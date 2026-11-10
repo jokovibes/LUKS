@@ -272,18 +272,33 @@ export const StudentsManagement: React.FC = () => {
     const unitMapByCode = new Map(allUnits.map((u) => [u.unit_code.toUpperCase(), u.id]));
     const allClasses = DataService.getClasses();
 
-    rows.forEach((row, idx) => {
+    rows.forEach((rawRow, idx) => {
       const lineNum = idx + 2;
+
+      // Smart alignment: jika nama siswa memiliki koma/suffix yang membuat kolom bergeser
+      let row = rawRow;
+      const emailIdx = row.findIndex((c, i) => i >= 2 && c.includes('@'));
+      if (emailIdx > 2) {
+        const shift = emailIdx - 2;
+        const nameParts = row.slice(0, shift + 1).map((s) => s.trim()).filter(Boolean);
+        const fullName = nameParts.join(', ');
+        const nis = row[shift + 1]?.trim() || '';
+        const email = row[emailIdx]?.trim() || '';
+        const rest = row.slice(emailIdx + 1);
+        row = [fullName, nis, email, ...rest];
+      }
+
       const stdName = row[0]?.trim();
       const stdId = row[1]?.trim().toUpperCase();
       const stdEmail = row[2]?.trim().toLowerCase();
       const unitCode = row[3]?.trim().toUpperCase();
       const className = row[4]?.trim();
       const genderRaw = row[5]?.trim().toUpperCase();
-      const dob = row[6]?.trim();
+      const dobRaw = row[6]?.trim();
       const contact = row[7]?.trim();
       const emgContact = row[8]?.trim();
       const emgPhone = row[9]?.trim();
+      const dob = CsvService.parseFlexibleDate(dobRaw);
 
       if (!stdName) {
         errors.push(`Baris ${lineNum}: Nama siswa wajib diisi.`);

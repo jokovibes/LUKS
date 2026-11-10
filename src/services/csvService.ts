@@ -22,16 +22,100 @@ export class CsvService {
   }
 
   /**
-   * Parser untuk satu baris CSV tunggal dengan dukungan unwrap tanda kutip
+  /**
+   * Normalisasi satu baris CSV untuk menangani variasi format Microsoft Excel / Google Sheets:
+   * 1. Baris berformat pembungkus kutip ganda Excel (seluruh baris dibungkus kutip luar,
+   *    kolom selanjutnya diawali `,""` atau `;""`, dan nama bergelar seperti "Joko Maryanto, S.Si"
+   *    berisi koma tanpa tanda kutip penutup sendiri sebelum koma pembatas).
+   * 2. Baris yang tidak diawali tanda kutip, namun kolom pertama berisi gelar/koma diikuti kolom bertanda kutip
+   *    (misal: Joko Maryanto, S.Si,"10.15.505","joko@lazuardi.sch.id",...).
+   * 3. Seluruh baris diapit tanda kutip luar oleh Excel dengan tanda kutip ganda standar di dalamnya.
    */
-  static parseSingleCsvLine(line: string): string[] {
-    let s = line.trim();
+  static normalizeCsvLine(line: string): string {
+    let s = line.trim().replace(/^\uFEFF/, '');
+    if (!s) return s;
+
+    // Kasus 1: Baris diapit tanda kutip luar oleh Excel dengan tanda kutip ganda di kolom-kolom berikutnya
+    // Contoh: "Nama Lengkap,""NIY"",""Email""..."
+    // Contoh: "Abdaah Alifah, A.Md, I.Kom,""10.24.758"",""abda@lazuardi.sch.id""..."
+    // Contoh: "Abdul Ghofar, A.Md.OT, S.Pd M.H., C.M.Ph.,""12.01.058""..."
+    if (s.startsWith('"') && s.endsWith('"') && (s.includes(',""') || s.includes(';""'))) {
+      const inner = s.slice(1, -1);
+      const firstSepIndex = inner.search(/[,;]""/);
+      if (firstSepIndex !== -1) {
+        const field0 = inner.slice(0, firstSepIndex).replace(/""/g, '"');
+        const sepChar = inner[firstSepIndex];
+        const rest = inner.slice(firstSepIndex + 1);
+        return JSON.stringify(field0) + sepChar + rest.replace(/""/g, '"');
+      }
+    }
+
+    // Kasus 2: Baris tidak diawali tanda kutip, namun kolom pertama berisi gelar/koma diikuti kolom bertanda kutip
+    // Contoh: Joko Maryanto, S.Si,"10.15.505","joko@lazuardi.sch.id",...
+    if (!s.startsWith('"') && (s.includes(',"') || s.includes(';"'))) {
+      const firstQuotedSep = s.search(/[,;]"/);
+      if (firstQuotedSep !== -1) {
+        const field0 = s.slice(0, firstQuotedSep);
+        if (field0.includes(',') || field0.includes(';')) {
+          const rest = s.slice(firstQuotedSep);
+          return JSON.stringify(field0) + rest;
+        }
+      }
+    }
+
+    // Kasus 3: Seluruh baris diapit tanda kutip luar oleh Excel dengan tanda kutip ganda standar di dalamnya
     if (s.startsWith('"') && s.endsWith('"')) {
       const unwrapped = s.slice(1, -1).replace(/""/g, '"');
       if (unwrapped.includes(',') || unwrapped.includes(';')) {
-        s = unwrapped;
+        return unwrapped;
       }
     }
+
+    return s;
+  }
+
+  /**
+   * Mengonversi format tanggal yang fleksibel (YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, atau Excel Serial Number seperti 36458)
+   * menjadi format standar ISO YYYY-MM-DD.
+   */
+  static parseFlexibleDate(val?: string): string | undefined {
+    if (!val) return undefined;
+    const trimmed = String(val).trim();
+    if (!trimmed) return undefined;
+
+    // Format ISO YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+
+    // Format Indonesia / Eropa: DD/MM/YYYY atau DD-MM-YYYY
+    const dmyMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    if (dmyMatch) {
+      return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+    }
+
+    // Nomor seri tanggal Excel (Excel Epoch serial date, contoh 36458 -> 1999-10-25)
+    const num = Number(trimmed);
+    if (!isNaN(num) && num >= 1000 && num <= 60000 && Number.isInteger(num)) {
+      // 25569 adalah selisih hari antara 1899-12-30 (Excel epoch) dan 1970-01-01 (Unix epoch)
+      const utcDays = num - 25569;
+      const date = new Date(utcDays * 86400 * 1000);
+      if (!isNaN(date.getTime())) {
+        const y = date.getUTCFullYear();
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(date.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Parser untuk satu baris CSV tunggal dengan normalisasi cerdas
+   */
+  static parseSingleCsvLine(line: string): string[] {
+    const s = CsvService.normalizeCsvLine(line);
     const row: string[] = [];
     let field = '';
     let inQuotes = false;
@@ -58,7 +142,7 @@ export class CsvService {
 
   /**
    * Parser CSV cerdas yang menangani koma di dalam tanda kutip, UTF-8 BOM,
-   * pembungkus kutip ganda Microsoft Excel, spasi, dan CRLF/LF.
+   * gelar nama (koma di dalam nama), pembungkus kutip ganda Microsoft Excel, spasi, dan CRLF/LF.
    */
   static parseCsv(text: string): string[][] {
     const lines: string[][] = [];
@@ -75,17 +159,8 @@ export class CsvService {
     // Standarisasi baris baru
     const rawLines = standardized.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
 
-    // Normalisasi baris jika seluruh baris diapit tanda kutip luar oleh Excel dengan tanda kutip ganda didalamnya
-    const normalizedLines = rawLines.map((line) => {
-      let s = line.trim();
-      if (s.startsWith('"') && s.endsWith('"')) {
-        const unwrapped = s.slice(1, -1).replace(/""/g, '"');
-        if (unwrapped.includes(',') || unwrapped.includes(';')) {
-          return unwrapped;
-        }
-      }
-      return line;
-    });
+    // Normalisasi setiap baris agar nama bergelar dan pembungkus Excel dipulihkan dengan benar
+    const normalizedLines = rawLines.map((line) => CsvService.normalizeCsvLine(line));
 
     const cleanText = normalizedLines.join('\n');
 

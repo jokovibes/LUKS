@@ -215,8 +215,22 @@ export const EmployeesManagement: React.FC = () => {
     const allUnits = DataService.getUnits();
     const unitMapByCode = new Map(allUnits.map((u) => [u.unit_code.toUpperCase(), u.id]));
 
-    rows.forEach((row, idx) => {
+    rows.forEach((rawRow, idx) => {
       const lineNum = idx + 2;
+
+      // Smart alignment: jika gelar/koma pada nama menyebabkan kolom bergeser sehingga email bergeser ke kolom 3 atau lebih
+      let row = rawRow;
+      const emailIdx = row.findIndex((c, i) => i >= 2 && c.includes('@'));
+      if (emailIdx > 2) {
+        const shift = emailIdx - 2;
+        const nameParts = row.slice(0, shift + 1).map((s) => s.trim()).filter(Boolean);
+        const fullName = nameParts.join(', ');
+        const niy = row[shift + 1]?.trim() || '';
+        const email = row[emailIdx]?.trim() || '';
+        const rest = row.slice(emailIdx + 1);
+        row = [fullName, niy, email, ...rest];
+      }
+
       const empName = row[0]?.trim();
       const niy = row[1]?.trim().toUpperCase();
       const empEmail = row[2]?.trim().toLowerCase();
@@ -229,12 +243,11 @@ export const EmployeesManagement: React.FC = () => {
       const emgContact = row[9]?.trim();
       const emgPhone = row[10]?.trim();
 
-      // Check if row[7] is a date (YYYY-MM-DD) or old format where row[7] was phone
-      let dobVal: string | undefined = undefined;
+      // Gunakan parseFlexibleDate (mendukung YYYY-MM-DD, DD/MM/YYYY, dan Excel Serial Number seperti 36458)
+      let dobVal: string | undefined = CsvService.parseFlexibleDate(dobRaw);
       let phoneVal = phone;
-      if (dobRaw && /^\d{4}-\d{2}-\d{2}$/.test(dobRaw)) {
-        dobVal = dobRaw;
-      } else if (dobRaw && !phone) {
+      if (!dobVal && dobRaw && !phone) {
+        // Fallback kompatibilitas format lama dimana kolom 7 adalah no telepon
         phoneVal = dobRaw;
       }
 

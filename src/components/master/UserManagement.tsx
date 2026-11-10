@@ -322,8 +322,21 @@ export const UserManagement: React.FC = () => {
     const errors: string[] = [];
     const unitMapByCode = new Map(units.map((u) => [u.unit_code.toUpperCase(), u.id]));
 
-    rows.forEach((row, idx) => {
+    rows.forEach((rawRow, idx) => {
       const lineNum = idx + 2; // header is line 1
+
+      // Smart alignment jika nama bergelar membelah kolom sehingga email bergeser
+      let row = rawRow;
+      const emailIdx = row.findIndex((c, i) => i >= 1 && c.includes('@'));
+      if (emailIdx > 1) {
+        const shift = emailIdx - 1;
+        const nameParts = row.slice(0, shift + 1).map((s) => s.trim()).filter(Boolean);
+        const fullName = nameParts.join(', ');
+        const email = row[emailIdx]?.trim() || '';
+        const rest = row.slice(emailIdx + 1);
+        row = [fullName, email, ...rest];
+      }
+
       const fullName = row[0]?.trim();
       const email = row[1]?.trim().toLowerCase();
       const identityId = row[2]?.trim().toUpperCase();

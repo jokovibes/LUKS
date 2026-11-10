@@ -145,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
             title="Klik untuk melihat status koneksi Supabase & Sinkronisasi"
           >
             <Database className="w-3.5 h-3.5" />
-            <span>{supabaseConnected ? 'Supabase Terhubung (LUKS)' : 'Engine: Storage Lokal'}</span>
+            <span>{supabaseConnected ? 'Database Supabase Terhubung' : 'Menghubungkan ke Supabase...'}</span>
             {supabaseConnected ? (
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             ) : (
@@ -227,14 +227,14 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     onClick={() => {
                       setIsProfileDropdownOpen(false);
-                      if (window.confirm('Bersihkan local storage dan reset seluruh sesi ke halaman login?')) {
+                      if (window.confirm('Keluar dan reset sesi aplikasi?')) {
                         clearLocalStorageAndLogout();
                       }
                     }}
                     className="w-full text-left px-3 py-2 text-xs text-amber-700 hover:bg-amber-50 rounded-lg flex items-center gap-2 font-medium"
                   >
                     <Trash2 className="w-4 h-4 text-amber-600" />
-                    Hapus Local Storage & Reset
+                    Reset Sesi & Halaman Login
                   </button>
 
                   <button

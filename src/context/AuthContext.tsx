@@ -6,8 +6,9 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UserProfile, UserRole } from '../types/database';
-import { localDb } from '../services/storage';
+import { localDb, purgeLocalStorageData } from '../services/storage';
 import { DataService } from '../services/dataService';
+import { SupabaseSyncService } from '../services/supabaseSyncService';
 import { signInWithGoogle, signOutFromFirebase } from '../services/firebaseClient';
 
 interface AuthContextType {
@@ -35,37 +36,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Load user on start - pastikan saat pertama kali buka aplikasi selalu ke halaman login
   useEffect(() => {
-    try {
-      // Hapus sesi pengguna di local storage agar tidak ada auto-login persisten
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-      localStorage.removeItem('luks_current_user_id');
+    let isMounted = true;
 
-      // Periksa apakah tab aktif saat ini memiliki sesi login aktif di sessionStorage
+    const initAuth = async () => {
+      try {
+        // Hapus jejak sesi dan data dummy di local storage
+        purgeLocalStorageData();
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+
+        // Muat data mutakhir langsung dari database Supabase
+        await SupabaseSyncService.init();
+
+        if (isMounted) {
+          // Selalu arahkan ke halaman login saat aplikasi pertama kali dibuka
+          setCurrentUser(null);
+        }
+      } catch (e) {
+        console.error('Error loading Supabase auth session:', e);
+        if (isMounted) setCurrentUser(null);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    initAuth();
+
+    const handleSyncEvent = () => {
       const sessionId = sessionStorage.getItem(SESSION_STORAGE_KEY);
       if (sessionId) {
         const profiles = localDb.getProfiles();
         const found = profiles.find((p) => p.id === sessionId);
         if (found && found.is_active) {
           setCurrentUser(found);
-        } else {
-          sessionStorage.removeItem(SESSION_STORAGE_KEY);
-          setCurrentUser(null);
         }
-      } else {
-        // Saat pertama kali buka aplikasi selalu ke halaman login
-        setCurrentUser(null);
       }
-    } catch (e) {
-      console.error('Error loading user session:', e);
-      setCurrentUser(null);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    window.addEventListener('luks-supabase-synced', handleSyncEvent);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('luks-supabase-synced', handleSyncEvent);
+    };
   }, []);
 
   const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
+      // Pastikan data profil dari Supabase termuat
+      if (localDb.getProfiles().length === 0) {
+        await SupabaseSyncService.init();
+      }
+
       const profiles = localDb.getProfiles();
       const user = profiles.find(
         (p) => p.email.toLowerCase().trim() === email.toLowerCase().trim()
@@ -90,7 +111,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setCurrentUser(user);
       sessionStorage.setItem(SESSION_STORAGE_KEY, user.id);
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      purgeLocalStorageData();
 
       DataService.logAudit(
         { id: user.id, name: user.full_name, role: user.role },
@@ -118,6 +139,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const googleEmail = googleRes.email.toLowerCase().trim();
+
+      // Pastikan data profil dari Supabase termuat
+      if (localDb.getProfiles().length === 0) {
+        await SupabaseSyncService.init();
+      }
+
       const profiles = localDb.getProfiles();
 
       // STRICT AUTHORIZATION: Only emails registered in application (Manajemen Pengguna) are allowed
