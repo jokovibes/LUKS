@@ -164,7 +164,7 @@ export const UnitsClassesManagement: React.FC = () => {
     const existingUnits = DataService.getUnits();
     const existingClasses = DataService.getClasses();
 
-    // In-memory map for unit lookup by code
+    // In-memory map for unit lookup by code (for KELAS lookup)
     const unitCodeMap = new Map<string, SchoolUnit>();
     existingUnits.forEach((u) => {
       unitCodeMap.set(u.unit_code.trim().toUpperCase(), u);
@@ -178,7 +178,18 @@ export const UnitsClassesManagement: React.FC = () => {
       const headOfUnit = (row[3] || '').trim();
       const className = (row[4] || '').trim();
 
-      if (!type && !unitCode && !className && !unitName) return; // skip blank row
+      // Lewati baris kosong
+      if (!type && !unitCode && !className && !unitName) return;
+
+      // Lewati baris jika ternyata merupakan baris header yang terbawa
+      if (
+        type.includes('TIPE') ||
+        unitCode.includes('KODE UNIT') ||
+        className.includes('NAMA KELAS') ||
+        unitName.includes('NAMA UNIT')
+      ) {
+        return;
+      }
 
       if (type === 'UNIT' || (!type && unitName && unitCode)) {
         if (!unitCode || !unitName) {
@@ -186,7 +197,15 @@ export const UnitsClassesManagement: React.FC = () => {
           return;
         }
 
-        const existing = unitCodeMap.get(unitCode);
+        // Cari unit yang sudah ada: cocokkan berdasarkan kode unit dan nama unit,
+        // atau jika hanya ada satu unit dengan kode tersebut dan nama unit cocok/generik
+        const existing = existingUnits.find(
+          (u) =>
+            u.unit_code.toUpperCase() === unitCode &&
+            (u.unit_name.toLowerCase() === unitName.toLowerCase() ||
+              existingUnits.filter((x) => x.unit_code.toUpperCase() === unitCode).length === 1)
+        );
+
         const unitPayload: SchoolUnit = {
           id: existing ? existing.id : `unit-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
           unit_code: unitCode,
@@ -201,6 +220,13 @@ export const UnitsClassesManagement: React.FC = () => {
           role: currentUser.role,
         });
 
+        if (existing) {
+          existing.unit_name = unitName;
+          existing.head_of_unit = headOfUnit || undefined;
+        } else {
+          existingUnits.push(unitPayload);
+        }
+
         unitCodeMap.set(unitCode, unitPayload);
         successCount++;
       } else if (type === 'KELAS' || (!type && className)) {
@@ -213,7 +239,10 @@ export const UnitsClassesManagement: React.FC = () => {
           return;
         }
 
-        const targetUnit = unitCodeMap.get(unitCode);
+        const targetUnit =
+          unitCodeMap.get(unitCode) ||
+          existingUnits.find((u) => u.unit_code.toUpperCase() === unitCode);
+
         if (!targetUnit) {
           errors.push(`Baris ${lineNum}: Unit dengan kode "${unitCode}" tidak ditemukan di database.`);
           return;
@@ -237,7 +266,9 @@ export const UnitsClassesManagement: React.FC = () => {
           role: currentUser.role,
         });
 
-        existingClasses.push(classPayload);
+        if (!existingClass) {
+          existingClasses.push(classPayload);
+        }
         successCount++;
       } else {
         errors.push(`Baris ${lineNum}: Tipe baris harus "UNIT" atau "KELAS".`);

@@ -220,7 +220,7 @@ export interface AuditLog {
   actor_name: string;
   actor_role: string;
   action: 'LOGIN' | 'LOGOUT' | 'VIEW_RECORD' | 'CREATE_RECORD' | 'UPDATE_RECORD' | 'EXPORT_DATA' | 'DELETE_RECORD' | 'APPROVE_PARAMETER';
-  entity_type: 'glucose_examinations' | 'uks_visits' | 'profiles' | 'health_parameters' | 'reports' | 'system_settings';
+  entity_type: 'glucose_examinations' | 'uks_visits' | 'profiles' | 'health_parameters' | 'reports' | 'system_settings' | 'audit_logs';
   entity_id?: string;
   timestamp: string;
   relevant_metadata?: Record<string, any>;

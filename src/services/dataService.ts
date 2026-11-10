@@ -1082,4 +1082,31 @@ export class DataService {
   static getAuditLogs(): AuditLog[] {
     return localDb.getAuditLogs();
   }
+
+  static async clearAuditLogs(
+    actor: { id: string; name: string; role: string },
+    recordClearAction: boolean = false
+  ): Promise<boolean> {
+    localDb.setAuditLogs([]);
+
+    if (supabase) {
+      try {
+        await supabase
+          .from('audit_logs')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (err) {
+        console.warn('Gagal menghapus audit_logs di Supabase:', err);
+      }
+    }
+
+    if (recordClearAction) {
+      this.logAudit(actor, 'DELETE_RECORD', 'audit_logs', 'all', {
+        action_detail: 'Pembersihan seluruh riwayat audit log oleh administrator',
+        cleared_at: new Date().toISOString(),
+      });
+    }
+
+    return true;
+  }
 }

@@ -22,7 +22,43 @@ export class CsvService {
   }
 
   /**
-   * Parser CSV cerdas yang menangani koma di dalam tanda kutip, spasi, dan CRLF/LF
+   * Parser untuk satu baris CSV tunggal dengan dukungan unwrap tanda kutip
+   */
+  static parseSingleCsvLine(line: string): string[] {
+    let s = line.trim();
+    if (s.startsWith('"') && s.endsWith('"')) {
+      const unwrapped = s.slice(1, -1).replace(/""/g, '"');
+      if (unwrapped.includes(',') || unwrapped.includes(';')) {
+        s = unwrapped;
+      }
+    }
+    const row: string[] = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < s.length; i++) {
+      const char = s[i];
+      const nextChar = s[i + 1];
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if ((char === ',' || char === ';') && !inQuotes) {
+        row.push(field.trim());
+        field = '';
+      } else {
+        field += char;
+      }
+    }
+    row.push(field.trim());
+    return row;
+  }
+
+  /**
+   * Parser CSV cerdas yang menangani koma di dalam tanda kutip, UTF-8 BOM,
+   * pembungkus kutip ganda Microsoft Excel, spasi, dan CRLF/LF.
    */
   static parseCsv(text: string): string[][] {
     const lines: string[][] = [];
@@ -30,8 +66,39 @@ export class CsvService {
     let field = '';
     let inQuotes = false;
 
+    // Hapus UTF-8 BOM jika ada
+    let standardized = text;
+    if (standardized.charCodeAt(0) === 0xfeff) {
+      standardized = standardized.slice(1);
+    }
+
     // Standarisasi baris baru
-    const cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const rawLines = standardized.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+    // Normalisasi baris jika seluruh baris diapit tanda kutip luar oleh Excel dengan tanda kutip ganda didalamnya
+    const normalizedLines = rawLines.map((line) => {
+      let s = line.trim();
+      if (s.startsWith('"') && s.endsWith('"')) {
+        const unwrapped = s.slice(1, -1).replace(/""/g, '"');
+        if (unwrapped.includes(',') || unwrapped.includes(';')) {
+          return unwrapped;
+        }
+      }
+      return line;
+    });
+
+    const cleanText = normalizedLines.join('\n');
+
+    const pushRow = (r: string[]) => {
+      let targetRow = r;
+      // Jika suatu baris hanya memiliki 1 kolom tetapi berisi pemisah koma/titik koma, uraikan ulang baris tersebut
+      if (targetRow.length === 1 && (targetRow[0].includes(',') || targetRow[0].includes(';'))) {
+        targetRow = CsvService.parseSingleCsvLine(targetRow[0]);
+      }
+      if (targetRow.some((col) => col.length > 0)) {
+        lines.push(targetRow);
+      }
+    };
 
     for (let i = 0; i < cleanText.length; i++) {
       const char = cleanText[i];
@@ -50,10 +117,7 @@ export class CsvService {
         field = '';
       } else if (char === '\n' && !inQuotes) {
         row.push(field.trim());
-        // Hanya masukkan baris jika ada setidaknya satu kolom yang tidak kosong
-        if (row.some((col) => col.length > 0)) {
-          lines.push(row);
-        }
+        pushRow(row);
         row = [];
         field = '';
       } else {
@@ -63,9 +127,7 @@ export class CsvService {
 
     if (field || row.length > 0) {
       row.push(field.trim());
-      if (row.some((col) => col.length > 0)) {
-        lines.push(row);
-      }
+      pushRow(row);
     }
 
     return lines;
