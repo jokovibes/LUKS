@@ -1078,6 +1078,46 @@ export class DataService {
     return { success: true };
   }
 
+  static async saveSchoolIdentitySettings(
+    schoolName: string,
+    schoolAddress: string,
+    uksPhone: string,
+    academicYear: string,
+    actor: { id: string; name: string; role: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    const res1 = await this.updateSystemSetting(
+      'school_name',
+      schoolName.trim(),
+      actor,
+      'Nama institusi sekolah yang tertera pada laporan dan kop surat'
+    );
+    const res2 = await this.updateSystemSetting(
+      'school_address',
+      schoolAddress.trim(),
+      actor,
+      'Alamat resmi sekolah'
+    );
+    const res3 = await this.updateSystemSetting(
+      'uks_phone',
+      uksPhone.trim(),
+      actor,
+      'Nomor telepon langsung ruang UKS'
+    );
+    const res4 = await this.updateSystemSetting(
+      'active_academic_year',
+      academicYear.trim(),
+      actor,
+      'Semester & Tahun Ajaran aktif'
+    );
+    if (!res1.success || !res2.success || !res3.success || !res4.success) {
+      return {
+        success: false,
+        error: res1.error || res2.error || res3.error || res4.error || 'Gagal menyimpan ke database Supabase',
+      };
+    }
+    return { success: true };
+  }
+
   // --- AUDIT LOGS ---
   static getAuditLogs(): AuditLog[] {
     return localDb.getAuditLogs();

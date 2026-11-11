@@ -20,6 +20,10 @@ import {
   Plus,
   X,
   Sliders,
+  Building2,
+  MapPin,
+  Phone,
+  GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DataService } from '../../services/dataService';
@@ -31,12 +35,21 @@ export const HealthParametersSettings: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isSavingSchoolSettings, setIsSavingSchoolSettings] = useState(false);
 
-  // System settings for repeat visit
+  // System settings from database
   const settings = DataService.getSystemSettings();
+  const schoolNameSetting = settings.find((s) => s.setting_key === 'school_name');
+  const schoolAddressSetting = settings.find((s) => s.setting_key === 'school_address');
+  const uksPhoneSetting = settings.find((s) => s.setting_key === 'uks_phone');
+  const academicYearSetting = settings.find((s) => s.setting_key === 'active_academic_year');
   const thresholdSetting = settings.find((s) => s.setting_key === 'repeat_visit_threshold');
   const periodSetting = settings.find((s) => s.setting_key === 'repeat_visit_period_days');
 
+  const [schoolName, setSchoolName] = useState(schoolNameSetting?.setting_value || 'Lazuardi Global Compassionate School');
+  const [schoolAddress, setSchoolAddress] = useState(schoolAddressSetting?.setting_value || 'Jl. Merpati No. 12, Cinere, Depok, Jawa Barat 16514');
+  const [uksPhone, setUksPhone] = useState(uksPhoneSetting?.setting_value || '(021) 753-4820 ext 105');
+  const [academicYear, setAcademicYear] = useState(academicYearSetting?.setting_value || '2026/2027 Ganjil');
   const [thresholdValue, setThresholdValue] = useState(thresholdSetting?.setting_value || '3');
   const [periodDays, setPeriodDays] = useState(periodSetting?.setting_value || '30');
 
@@ -44,8 +57,16 @@ export const HealthParametersSettings: React.FC = () => {
   React.useEffect(() => {
     const handleSync = () => {
       const freshSettings = DataService.getSystemSettings();
+      const sn = freshSettings.find((s) => s.setting_key === 'school_name');
+      const sa = freshSettings.find((s) => s.setting_key === 'school_address');
+      const up = freshSettings.find((s) => s.setting_key === 'uks_phone');
+      const ay = freshSettings.find((s) => s.setting_key === 'active_academic_year');
       const th = freshSettings.find((s) => s.setting_key === 'repeat_visit_threshold');
       const pd = freshSettings.find((s) => s.setting_key === 'repeat_visit_period_days');
+      if (sn) setSchoolName(sn.setting_value);
+      if (sa) setSchoolAddress(sa.setting_value);
+      if (up) setUksPhone(up.setting_value);
+      if (ay) setAcademicYear(ay.setting_value);
       if (th) setThresholdValue(th.setting_value);
       if (pd) setPeriodDays(pd.setting_value);
       setReloadKey((k) => k + 1);
@@ -185,6 +206,46 @@ export const HealthParametersSettings: React.FC = () => {
     setTimeout(() => setSuccessMessage(null), 4000);
   };
 
+  const handleSaveSchoolIdentity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    if (!schoolName.trim()) {
+      setErrorMessage('Nama sekolah tidak boleh kosong.');
+      return;
+    }
+
+    setIsSavingSchoolSettings(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const res = await DataService.saveSchoolIdentitySettings(
+        schoolName,
+        schoolAddress,
+        uksPhone,
+        academicYear,
+        {
+          id: currentUser.id,
+          name: currentUser.full_name,
+          role: currentUser.role,
+        }
+      );
+
+      if (res.success) {
+        setSuccessMessage('Pengaturan Nama Sekolah, Alamat, No Telp UKS, dan Tahun Ajaran berhasil disimpan ke database Supabase!');
+        setReloadKey((k) => k + 1);
+      } else {
+        setErrorMessage(res.error || 'Gagal menyimpan pengaturan identitas sekolah ke database Supabase.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Terjadi kesalahan sistem saat menyimpan ke Supabase.');
+    } finally {
+      setIsSavingSchoolSettings(false);
+      setTimeout(() => setSuccessMessage(null), 4500);
+    }
+  };
+
   const handleSaveSystemSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
@@ -236,10 +297,10 @@ export const HealthParametersSettings: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 text-blue-900 font-extrabold text-lg">
             <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            <span>Pengaturan Parameter Medis & Kunjungan Berulang</span>
+            <span>Pengaturan Sistem, Identitas Sekolah & Parameter Medis</span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Konfigurasi ambang batas klasifikasi gula darah yang disetujui tenaga kesehatan berwenang dan parameter deteksi UKS.
+            Kelola identitas sekolah, kontak UKS, semester aktif, dan parameter klasifikasi medis yang tersinkronisasi langsung ke database Supabase.
           </p>
         </div>
       </div>
@@ -258,6 +319,122 @@ export const HealthParametersSettings: React.FC = () => {
         </div>
       )}
 
+      {/* SECTION 1: School Identity & Active Academic Year (Supabase System Settings) */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-blue-700" />
+              1. Identitas Sekolah & Semester / Tahun Ajaran Aktif
+            </h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Data identitas ini langsung tersimpan ke database Supabase dan otomatis tampil pada kop surat laporan resmi, slip rujukan, serta dokumen UKS.
+            </p>
+          </div>
+          <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5 self-start sm:self-auto shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Tersambung ke Supabase (system_settings)
+          </span>
+        </div>
+
+        <form onSubmit={handleSaveSchoolIdentity} className="space-y-4 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                <Building2 className="w-3.5 h-3.5 text-blue-700" />
+                <span>Nama Sekolah / Institusi</span>
+              </label>
+              <input
+                type="text"
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
+                placeholder="Lazuardi Global Compassionate School"
+                className="w-full text-xs font-medium border border-slate-300 rounded-xl p-2.5 bg-white focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Nama resmi sekolah yang tercantum pada judul laporan dan kop surat resmi.
+              </p>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                <GraduationCap className="w-3.5 h-3.5 text-purple-700" />
+                <span>Semester & Tahun Ajaran Aktif</span>
+              </label>
+              <input
+                type="text"
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+                placeholder="2026/2027 Ganjil"
+                className="w-full text-xs font-medium border border-slate-300 rounded-xl p-2.5 bg-white focus:ring-2 focus:ring-purple-600 focus:outline-hidden"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Periode tahun ajaran aktif yang sedang berjalan di lingkungan sekolah.
+              </p>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                <Phone className="w-3.5 h-3.5 text-emerald-700" />
+                <span>No. Telepon / Kontak UKS</span>
+              </label>
+              <input
+                type="text"
+                value={uksPhone}
+                onChange={(e) => setUksPhone(e.target.value)}
+                placeholder="(021) 753-4820 ext 105"
+                className="w-full text-xs font-medium border border-slate-300 rounded-xl p-2.5 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Nomor saluran telepon langsung ke ruang UKS untuk komunikasi darurat.
+              </p>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                <MapPin className="w-3.5 h-3.5 text-rose-600" />
+                <span>Alamat Lengkap Sekolah</span>
+              </label>
+              <input
+                type="text"
+                value={schoolAddress}
+                onChange={(e) => setSchoolAddress(e.target.value)}
+                placeholder="Jl. Merpati No. 12, Cinere, Depok, Jawa Barat 16514"
+                className="w-full text-xs font-medium border border-slate-300 rounded-xl p-2.5 bg-white focus:ring-2 focus:ring-rose-600 focus:outline-hidden"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Alamat domisili fisik sekolah yang tercetak pada kop surat resmi.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500">
+              Perubahan identitas sekolah akan otomatis tersinkronisasi ke database Supabase dan seluruh cetakan dokumen.
+            </span>
+            <button
+              type="submit"
+              disabled={isSavingSchoolSettings}
+              className={`px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs shrink-0 ${
+                isSavingSchoolSettings ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+            >
+              {isSavingSchoolSettings ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Menyimpan ke Supabase...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Simpan Pengaturan Identitas Sekolah</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+
       {/* Mandatory Clinical Disclaimer Banner */}
       <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-start gap-3">
         <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
@@ -272,13 +449,13 @@ export const HealthParametersSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 1: Health Classification Parameters (Approved by Medical Authority) */}
+      {/* SECTION 2: Health Classification Parameters (Approved by Medical Authority) */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
               <Activity className="w-4 h-4 text-blue-700" />
-              1. Parameter Klasifikasi Pemeriksaan Gula Darah (Standar Medis)
+              2. Parameter Klasifikasi Pemeriksaan Gula Darah (Standar Medis)
             </h3>
             <p className="text-[11px] text-slate-500 mt-0.5">
               Atur tipe pemeriksaan (GDP, GDS, GD2PP), rentang ambang normal, perhatian, dan tindak lanjut.
@@ -388,12 +565,12 @@ export const HealthParametersSettings: React.FC = () => {
         )}
       </div>
 
-      {/* SECTION 2: Repeat Visit Detection Settings */}
+      {/* SECTION 3: Repeat Visit Detection Settings */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
             <HeartPulse className="w-4 h-4 text-rose-600" />
-            2. Konfigurasi Ambang Batas Peringatan Kunjungan Berulang (Repeat Visit)
+            3. Konfigurasi Ambang Batas Peringatan Kunjungan Berulang (Repeat Visit)
           </h3>
         </div>
 

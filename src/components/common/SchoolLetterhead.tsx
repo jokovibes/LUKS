@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { LAZUARDI_LOGO_URL } from '../../constants/assets';
+import { DataService } from '../../services/dataService';
 
 interface SchoolLetterheadProps {
   documentTitle: string;
@@ -17,6 +18,11 @@ export const SchoolLetterhead: React.FC<SchoolLetterheadProps> = ({
   documentSubtitle,
   documentNumber,
 }) => {
+  const settings = DataService.getSystemSettings();
+  const schoolName = settings.find((s) => s.setting_key === 'school_name')?.setting_value || 'Lazuardi Global Compassionate School';
+  const schoolAddress = settings.find((s) => s.setting_key === 'school_address')?.setting_value || 'Jl. Merpati No. 12, Cinere, Depok, Jawa Barat 16514';
+  const uksPhone = settings.find((s) => s.setting_key === 'uks_phone')?.setting_value || '(021) 753-4820 ext 105';
+
   return (
     <div className="border-b-2 border-slate-900 pb-4 mb-6">
       <div className="flex items-center justify-between gap-4">
@@ -35,13 +41,13 @@ export const SchoolLetterhead: React.FC<SchoolLetterheadProps> = ({
 
           <div>
             <h1 className="text-lg md:text-xl font-extrabold uppercase tracking-wide text-blue-950 font-serif">
-              Lazuardi Global Compassionate School
+              {schoolName}
             </h1>
             <p className="text-xs font-semibold text-sky-800 tracking-wider uppercase">
               Unit Kesehatan Sekolah (UKS) Terpadu
             </p>
             <p className="text-[11px] text-slate-600 mt-0.5">
-              Jl. Merpati No. 12, Cinere, Depok, Jawa Barat 16514 | Telp: (021) 753-4820 ext 105 | Email: uks@lazuardi.sch.id
+              {schoolAddress} | Telp: {uksPhone} | Email: uks@lazuardi.sch.id
             </p>
           </div>
         </div>

@@ -15,6 +15,7 @@ import {
   UserProfile,
   SchoolUnit,
 } from '../types/database';
+import { DataService } from './dataService';
 
 export class PdfService {
   /**
@@ -27,6 +28,12 @@ export class PdfService {
     documentNumber?: string
   ): number {
     const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Read dynamic school settings from database
+    const schoolSettings = DataService.getSystemSettings();
+    const schoolName = (schoolSettings.find((s) => s.setting_key === 'school_name')?.setting_value || 'Lazuardi Global Compassionate School').toUpperCase();
+    const schoolAddress = schoolSettings.find((s) => s.setting_key === 'school_address')?.setting_value || 'Jl. Merpati No. 12, Cinere, Depok 16514';
+    const uksPhone = schoolSettings.find((s) => s.setting_key === 'uks_phone')?.setting_value || '(021) 753-4820 ext 105';
 
     // Header Background Accent Bar
     doc.setFillColor(30, 58, 138); // blue-900
@@ -46,7 +53,7 @@ export class PdfService {
     doc.setTextColor(15, 23, 42); // slate-900
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
-    doc.text('LAZUARDI GLOBAL COMPASSIONATE SCHOOL', 34, 21);
+    doc.text(schoolName, 34, 21);
 
     doc.setFontSize(9);
     doc.setTextColor(2, 132, 199); // sky-600
@@ -56,7 +63,7 @@ export class PdfService {
     doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139); // slate-500
     doc.text(
-      'Jl. Merpati No. 12, Cinere, Depok 16514 | Telp: (021) 753-4820 ext 105 | Email: uks@lazuardi.sch.id',
+      `${schoolAddress} | Telp: ${uksPhone} | Email: uks@lazuardi.sch.id`,
       34,
       31
     );
@@ -135,13 +142,13 @@ export class PdfService {
       year: 'numeric',
     });
 
-    const approverTitle = customSig?.approverTitle || (customSig ? 'Kepala Sekolah Lazuardi' : 'Dokter Konsultan / Kepala UKS');
-    const approverName = customSig?.approverName || (customSig ? 'Dr. H. Bambang Irawan, M.Pd' : '(......................................................)');
-    const approverNiy = customSig?.approverNiy !== undefined ? customSig.approverNiy : (customSig ? 'NIY: 2015.01.002' : 'SIP: 446.1/029/Dinkes-DPK/2024');
+    const approverTitle = customSig?.approverTitle || (customSig ? 'Kepala Care' : 'Dokter Konsultan / Kepala UKS');
+    const approverName = customSig?.approverName || (customSig ? 'Zaronah, SE' : '(......................................................)');
+    const approverNiy = customSig?.approverNiy !== undefined ? customSig.approverNiy : (customSig ? 'NIY: 10.00.017' : 'SIP: 446.1/029/Dinkes-DPK/2024');
 
     const staffTitle = customSig?.staffTitle || roleLabel;
-    const finalStaffName = customSig?.staffName || staffName || 'Ns. Siti Rahmah, S.Kep';
-    const finalStaffNiy = customSig?.staffNiy !== undefined ? customSig.staffNiy : 'NIP/NIY: 201908-UKS-042';
+    const finalStaffName = customSig?.staffName || staffName || 'dr. Imania';
+    const finalStaffNiy = customSig?.staffNiy !== undefined ? customSig.staffNiy : 'NIY: 10.18.586';
     const locDate = customSig?.locationDate || `Depok, ${todayStr}`;
 
     doc.setFontSize(8);

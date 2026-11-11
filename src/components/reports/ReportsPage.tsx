@@ -52,15 +52,13 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
 
   // Signature & Document Sign-Off Manual Customization
   const [penyusunDokumen, setPenyusunDokumen] = useState<string>(currentUser?.full_name || '');
-  const [approverTitle, setApproverTitle] = useState<string>('Kepala Sekolah Lazuardi');
-  const [approverName, setApproverName] = useState<string>('Dr. H. Bambang Irawan, M.Pd');
-  const [approverNiy, setApproverNiy] = useState<string>('NIY: 2015.01.002');
+  const [approverTitle, setApproverTitle] = useState<string>('Kepala Care');
+  const [approverName, setApproverName] = useState<string>('Zaronah, SE');
+  const [approverNiy, setApproverNiy] = useState<string>('NIY: 10.00.017');
 
   const [staffTitle, setStaffTitle] = useState<string>('Petugas / Penanggung Jawab UKS');
-  const [staffName, setStaffName] = useState<string>(currentUser?.full_name || '');
-  const [staffNiy, setStaffNiy] = useState<string>(
-    currentUser?.employee_or_student_id ? `NIY: ${currentUser.employee_or_student_id}` : 'NIY: 201908-UKS-042'
-  );
+  const [staffName, setStaffName] = useState<string>('dr. Imania');
+  const [staffNiy, setStaffNiy] = useState<string>('NIY: 10.18.586');
   const [signingLocationAndDate, setSigningLocationAndDate] = useState<string>(
     `Depok, ${new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}`
   );
@@ -165,12 +163,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
       categoryName: selectedCategory,
       signatures: {
         preparerName: penyusunDokumen || currentUser.full_name,
-        approverTitle: approverTitle || 'Kepala Sekolah Lazuardi',
-        approverName: approverName || 'Dr. H. Bambang Irawan, M.Pd',
-        approverNiy: approverNiy,
+        approverTitle: approverTitle || 'Kepala Care',
+        approverName: approverName || 'Zaronah, SE',
+        approverNiy: approverNiy || 'NIY: 10.00.017',
         staffTitle: staffTitle || 'Petugas / Penanggung Jawab UKS',
-        staffName: staffName || currentUser.full_name,
-        staffNiy: staffNiy,
+        staffName: staffName || 'dr. Imania',
+        staffNiy: staffNiy || 'NIY: 10.18.586',
         locationDate: signingLocationAndDate || `Depok, ${new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}`,
       },
     });
@@ -300,7 +298,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
                 <span>Pengaturan Manual Penandatangan & Pengesahan Laporan</span>
               </div>
               <p className="text-xs text-amber-800/80 mt-0.5">
-                Kustomisasi nama Penyusun Dokumen, Jabatan Pengesah (contoh: Kepala Sekolah diganti Manager FM), serta Petugas Penanggung Jawab UKS.
+                Kustomisasi nama Penyusun Dokumen, Jabatan Pengesah (contoh: Kepala Care / Kepala Sekolah), serta Petugas Penanggung Jawab UKS.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -308,21 +306,21 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
               <button
                 type="button"
                 onClick={() => {
-                  setApproverTitle('Manager FM');
-                  setApproverName('Ahmad Fauzi, S.Kom');
-                  setApproverNiy('NIY: 2018.04.015');
+                  setApproverTitle('Kepala Care');
+                  setApproverName('Zaronah, SE');
+                  setApproverNiy('NIY: 10.00.017');
                 }}
                 className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-900 rounded-lg text-[11px] font-bold border border-amber-300 transition shadow-2xs"
-                title="Ganti pengesah menjadi Manager FM"
+                title="Ganti pengesah menjadi Kepala Care (Zaronah, SE)"
               >
-                Ganti ke Manager FM
+                Kepala Care
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setApproverTitle('Kepala Sekolah Lazuardi');
-                  setApproverName('Dr. H. Bambang Irawan, M.Pd');
-                  setApproverNiy('NIY: 2015.01.002');
+                  setApproverName('Sari Kusuma Dewi, S.Si');
+                  setApproverNiy('NIY: 12.01.043');
                 }}
                 className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-900 rounded-lg text-[11px] font-bold border border-amber-300 transition shadow-2xs"
                 title="Ganti pengesah menjadi Kepala Sekolah Lazuardi"
@@ -333,12 +331,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
                 type="button"
                 onClick={() => {
                   setPenyusunDokumen(currentUser.full_name);
-                  setApproverTitle('Kepala Sekolah Lazuardi');
-                  setApproverName('Dr. H. Bambang Irawan, M.Pd');
-                  setApproverNiy('NIY: 2015.01.002');
+                  setApproverTitle('Kepala Care');
+                  setApproverName('Zaronah, SE');
+                  setApproverNiy('NIY: 10.00.017');
                   setStaffTitle('Petugas / Penanggung Jawab UKS');
-                  setStaffName(currentUser.full_name);
-                  setStaffNiy(currentUser.employee_or_student_id ? `NIY: ${currentUser.employee_or_student_id}` : 'NIY: 201908-UKS-042');
+                  setStaffName('dr. Imania');
+                  setStaffNiy('NIY: 10.18.586');
                   setSigningLocationAndDate(`Depok, ${new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}`);
                 }}
                 className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-rose-50 text-rose-700 rounded-lg text-[11px] font-bold border border-rose-200 transition shadow-2xs"
@@ -379,11 +377,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
               </div>
             </div>
 
-            {/* Section 2: Pihak Mengetahui (Kepala Sekolah / Manager FM / Direktur) */}
+            {/* Section 2: Pihak Mengetahui (Pimpinan) */}
             <div className="bg-white p-3.5 rounded-xl border border-amber-200/80 space-y-2.5 shadow-2xs">
               <div className="font-extrabold text-slate-800 flex items-center gap-1.5 pb-1 border-b border-slate-100">
                 <Building2 className="w-3.5 h-3.5 text-amber-700" />
-                <span>2. Mengetahui (Pimpinan / Manager FM)</span>
+                <span>2. Mengetahui (Pimpinan)</span>
               </div>
               <div>
                 <label className="text-[11px] font-bold text-slate-600 block mb-1">Jabatan Pengesah (Bisa Diubah):</label>
@@ -391,7 +389,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
                   type="text"
                   value={approverTitle}
                   onChange={(e) => setApproverTitle(e.target.value)}
-                  placeholder="Kepala Sekolah Lazuardi / Manager FM"
+                  placeholder="Kepala Care / Kepala Sekolah Lazuardi"
                   className="w-full border border-slate-300 rounded-lg p-2 text-xs font-semibold text-blue-950 focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
                 />
               </div>
@@ -401,7 +399,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
                   type="text"
                   value={approverName}
                   onChange={(e) => setApproverName(e.target.value)}
-                  placeholder="Dr. H. Bambang Irawan, M.Pd"
+                  placeholder="Zaronah, SE"
                   className="w-full border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
                 />
               </div>
@@ -411,7 +409,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
                   type="text"
                   value={approverNiy}
                   onChange={(e) => setApproverNiy(e.target.value)}
-                  placeholder="NIY: 2015.01.002"
+                  placeholder="NIY: 10.00.017"
                   className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
                 />
               </div>
@@ -439,7 +437,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
                   type="text"
                   value={staffName}
                   onChange={(e) => setStaffName(e.target.value)}
-                  placeholder="Ns. Siti Rahmah, S.Kep"
+                  placeholder="dr. Imania"
                   className="w-full border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
                 />
               </div>
@@ -449,7 +447,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
                   type="text"
                   value={staffNiy}
                   onChange={(e) => setStaffNiy(e.target.value)}
-                  placeholder="NIY: 201908-UKS-042"
+                  placeholder="NIY: 10.18.586"
                   className="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
                 />
               </div>
@@ -641,16 +639,16 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ initialReportType }) =
           <div className="grid grid-cols-2 text-center text-xs">
             <div>
               <p className="text-slate-600">Mengetahui,</p>
-              <p className="font-semibold text-slate-800">{approverTitle || 'Kepala Sekolah Lazuardi'}</p>
+              <p className="font-semibold text-slate-800">{approverTitle || 'Kepala Care'}</p>
               <div className="h-20"></div>
-              <p className="font-bold underline text-slate-900">{approverName || 'Dr. H. Bambang Irawan, M.Pd'}</p>
+              <p className="font-bold underline text-slate-900">{approverName || 'Zaronah, SE'}</p>
               {approverNiy && <p className="text-[10px] text-slate-500 font-mono">{approverNiy}</p>}
             </div>
             <div>
               <p className="text-slate-600">{signingLocationAndDate || `Depok, ${new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}`}</p>
               <p className="font-semibold text-slate-800">{staffTitle || 'Petugas / Penanggung Jawab UKS'}</p>
               <div className="h-20"></div>
-              <p className="font-bold underline text-slate-900">{staffName || currentUser.full_name}</p>
+              <p className="font-bold underline text-slate-900">{staffName || 'dr. Imania'}</p>
               {staffNiy && (
                 <p className="text-[10px] text-slate-500 font-mono">
                   {staffNiy}
