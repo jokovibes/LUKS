@@ -52,9 +52,13 @@ import { SchoolLetterhead } from '../common/SchoolLetterhead';
 
 interface GlucoseExamListProps {
   onOpenRegister?: () => void;
+  personalOnly?: boolean;
 }
 
-export const GlucoseExamList: React.FC<GlucoseExamListProps> = ({ onOpenRegister }) => {
+export const GlucoseExamList: React.FC<GlucoseExamListProps> = ({
+  onOpenRegister,
+  personalOnly = false,
+}) => {
   const { currentUser, role } = useAuth();
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -89,10 +93,13 @@ export const GlucoseExamList: React.FC<GlucoseExamListProps> = ({ onOpenRegister
   if (!currentUser) return null;
 
   // Retrieve examinations with RLS check
-  const allExams = React.useMemo(
-    () => DataService.getGlucoseExaminations(currentUser),
-    [currentUser, reloadKey]
-  );
+  const allExams = React.useMemo(() => {
+    const list = DataService.getGlucoseExaminations(currentUser);
+    if (personalOnly) {
+      return list.filter((e) => e.participant_id === currentUser.id);
+    }
+    return list;
+  }, [currentUser, reloadKey, personalOnly]);
   const units = DataService.getUnits();
   const unitMap = new Map(units.map((u) => [u.id, u.unit_name]));
 
@@ -351,10 +358,14 @@ export const GlucoseExamList: React.FC<GlucoseExamListProps> = ({ onOpenRegister
         <div>
           <div className="flex items-center gap-2 text-blue-900 font-extrabold text-lg">
             <Activity className="w-5 h-5 text-blue-600" />
-            <span>Riwayat Pemeriksaan Gula Darah</span>
+            <span>
+              {personalOnly ? 'Riwayat Pemeriksaan Gula Darah Saya' : 'Riwayat Pemeriksaan Gula Darah'}
+            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Daftar pemeriksaan, tren glukosa berulang, dan status tindak lanjut kesehatan sekolah.
+            {personalOnly
+              ? `Rekam medis pemeriksaan gula darah pribadi untuk akun: ${currentUser.full_name} (${currentUser.employee_or_student_id})`
+              : 'Daftar pemeriksaan, tren glukosa berulang, dan status tindak lanjut kesehatan sekolah.'}
           </p>
         </div>
 
@@ -364,7 +375,9 @@ export const GlucoseExamList: React.FC<GlucoseExamListProps> = ({ onOpenRegister
               ExportService.downloadGlucoseExaminationsPdf(
                 filteredExams,
                 unitMap,
-                `Data Skrining Gula Darah (${filteredExams.length} Catatan)`
+                personalOnly
+                  ? `Rekam Medis Gula Darah - ${currentUser.full_name}`
+                  : `Data Skrining Gula Darah (${filteredExams.length} Catatan)`
               )
             }
             className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-semibold shadow-xs transition"
@@ -380,7 +393,7 @@ export const GlucoseExamList: React.FC<GlucoseExamListProps> = ({ onOpenRegister
             Ekspor Excel (.xlsx)
           </button>
 
-          {(role === 'petugas_uks' || role === 'admin') && (
+          {!personalOnly && (role === 'petugas_uks' || role === 'admin') && (
             <>
               <button
                 type="button"
@@ -402,7 +415,7 @@ export const GlucoseExamList: React.FC<GlucoseExamListProps> = ({ onOpenRegister
             </>
           )}
 
-          {(role === 'petugas_uks' || role === 'admin') && onOpenRegister && (
+          {!personalOnly && (role === 'petugas_uks' || role === 'admin') && onOpenRegister && (
             <button
               onClick={onOpenRegister}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-xs transition"

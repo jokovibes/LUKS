@@ -50,94 +50,123 @@ export const TrendsAnalysis: React.FC = () => {
 
   if (!currentUser) return null;
 
-  const exams = DataService.getGlucoseExaminations(currentUser);
-  const visits = DataService.getUksVisits(currentUser);
+  const allExams = DataService.getGlucoseExaminations(currentUser);
+  const allVisits = DataService.getUksVisits(currentUser);
   const units = DataService.getUnits();
   const repeatWarnings = DataService.getRepeatVisitWarnings();
 
-  // Multi-Month Longitudinal Trend Data (Simulated longitudinal view based on real data)
-  const monthlyTrendsData = [
-    {
-      bulan: 'Mei',
-      'Kasus Sakit': 14,
-      'Kasus Cedera': 3,
-      'Skrining Rutin': 22,
-      'Rata Glukosa (mg/dL)': 96,
-      'Kasus Waspada Glukosa': 2,
-    },
-    {
-      bulan: 'Jun (Ujian Akhir)',
-      'Kasus Sakit': 21,
-      'Kasus Cedera': 2,
-      'Skrining Rutin': 18,
-      'Rata Glukosa (mg/dL)': 102,
-      'Kasus Waspada Glukosa': 4,
-    },
-    {
-      bulan: 'Jul (Awal Ajaran Baru)',
-      'Kasus Sakit': 8,
-      'Kasus Cedera': 5,
-      'Skrining Rutin': 35,
-      'Rata Glukosa (mg/dL)': 94,
-      'Kasus Waspada Glukosa': 1,
-    },
-    {
-      bulan: 'Agu (Class Meeting/Lomba)',
-      'Kasus Sakit': 12,
-      'Kasus Cedera': 9,
-      'Skrining Rutin': 28,
-      'Rata Glukosa (mg/dL)': 98,
-      'Kasus Waspada Glukosa': 3,
-    },
-    {
-      bulan: 'Sep (Pancaroba / Flu)',
-      'Kasus Sakit': 26,
-      'Kasus Cedera': 4,
-      'Skrining Rutin': 24,
-      'Rata Glukosa (mg/dL)': 97,
-      'Kasus Waspada Glukosa': 2,
-    },
-    {
-      bulan: 'Okt (Bulan Ini)',
-      'Kasus Sakit': visits.filter((v) => v.visit_reason === 'sakit').length || 18,
-      'Kasus Cedera': visits.filter((v) => v.visit_reason === 'cedera').length || 4,
-      'Skrining Rutin': exams.length || 32,
-      'Rata Glukosa (mg/dL)': 99,
-      'Kasus Waspada Glukosa': exams.filter((e) => e.classification === 'perlu_perhatian' || e.classification === 'tindak_lanjut').length || 3,
-    },
-  ];
+  const exams = allExams.filter((e) => {
+    if (selectedUnit !== 'all' && e.participant?.unit_id !== selectedUnit) return false;
+    return true;
+  });
 
-  // Unit Health Index Scores
-  const unitHealthIndex = [
-    {
-      unit: 'Pra-TK & TK Lazuardi',
-      score: 95,
-      status: 'Sangat Baik',
-      color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-      highlight: 'Keluhan dominan: flu ringan & luka lecet bermain. Tingkat pemulihan cepat.',
-    },
-    {
-      unit: 'SD Lazuardi',
-      score: 91,
-      status: 'Baik & Terkendali',
-      color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-      highlight: 'Aktivitas fisik tinggi; perlu pengawasan hidrasi dan waktu makan siang teratur.',
-    },
-    {
-      unit: 'SMP Lazuardi',
-      score: 87,
-      status: 'Perlu Perhatian Pola Makan',
-      color: 'text-amber-700 bg-amber-50 border-amber-200',
-      highlight: 'Terdeteksi fluktuasi glukosa pada makanan kantin dan keluhan dispepsia (telat sarapan).',
-    },
-    {
-      unit: 'SMA Lazuardi',
-      score: 86,
-      status: 'Perlu Pengelolaan Stres Belajar',
-      color: 'text-blue-700 bg-blue-50 border-blue-200',
-      highlight: 'Puncak keluhan pusing/migrain terpusat pada pekan persiapan ujian dan tryout.',
-    },
-  ];
+  const visits = allVisits.filter((v) => {
+    if (selectedUnit !== 'all' && v.participant?.unit_id !== selectedUnit) return false;
+    return true;
+  });
+
+  // Dynamic Longitudinal Trend Data based strictly on Supabase database
+  const monthCount = selectedPeriod === '3_bulan' ? 3 : selectedPeriod === '1_tahun' ? 12 : 6;
+  const now = new Date();
+  const monthlyTrendsData = [];
+
+  for (let i = monthCount - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const monthName = d.toLocaleDateString('id-ID', {
+      month: 'short',
+      year: monthCount > 6 ? '2-digit' : undefined,
+    });
+
+    const monthVisits = visits.filter((v) => {
+      if (!v.visit_datetime) return false;
+      const vd = new Date(v.visit_datetime);
+      return !isNaN(vd.getTime()) && vd.getFullYear() === y && vd.getMonth() === m;
+    });
+
+    const monthExams = exams.filter((e) => {
+      if (!e.examination_datetime) return false;
+      const ed = new Date(e.examination_datetime);
+      return !isNaN(ed.getTime()) && ed.getFullYear() === y && ed.getMonth() === m;
+    });
+
+    const avgGlucose = monthExams.length > 0
+      ? Math.round(monthExams.reduce((acc, curr) => acc + curr.result_value, 0) / monthExams.length)
+      : 0;
+
+    monthlyTrendsData.push({
+      bulan: monthName,
+      'Kasus Sakit': monthVisits.filter((v) => v.visit_reason === 'sakit').length,
+      'Kasus Cedera': monthVisits.filter((v) => v.visit_reason === 'cedera').length,
+      'Skrining Rutin': monthExams.length,
+      'Rata Glukosa (mg/dL)': avgGlucose,
+      'Kasus Waspada Glukosa': monthExams.filter(
+        (e) => e.classification === 'perlu_perhatian' || e.classification === 'tindak_lanjut'
+      ).length,
+    });
+  }
+
+  const hasTrendData = monthlyTrendsData.some(
+    (m) => m['Kasus Sakit'] > 0 || m['Kasus Cedera'] > 0 || m['Skrining Rutin'] > 0
+  );
+
+  const hasGlucoseTrendData = monthlyTrendsData.some((m) => m['Skrining Rutin'] > 0);
+
+  // Dynamic Unit Health Index Scores from real database
+  const unitHealthIndex = units.map((u) => {
+    const uExams = allExams.filter((e) => e.participant?.unit_id === u.id);
+    const uVisits = allVisits.filter((v) => v.participant?.unit_id === u.id);
+    const totalRecords = uExams.length + uVisits.length;
+
+    if (totalRecords === 0) {
+      return {
+        unit: u.unit_name,
+        score: '-',
+        status: 'Belum Ada Data Rekam Medis',
+        color: 'text-slate-600 bg-slate-100 border-slate-200',
+        highlight: `Belum ada riwayat kunjungan UKS atau skrining glukosa yang tercatat untuk ${u.unit_name} di database Supabase.`,
+      };
+    }
+
+    const normalExams = uExams.filter((e) => e.classification === 'normal').length;
+    const resolvedVisits = uVisits.filter((v) => v.outcome === 'kembali_ke_kelas' || v.outcome === 'kembali_bekerja').length;
+    const glucoseScore = uExams.length > 0 ? (normalExams / uExams.length) * 50 : 50;
+    const visitScore = uVisits.length > 0 ? (resolvedVisits / uVisits.length) * 50 : 50;
+    const score = Math.round(glucoseScore + visitScore);
+
+    return {
+      unit: u.unit_name,
+      score,
+      status: score >= 90 ? 'Sangat Baik' : score >= 75 ? 'Baik & Terkendali' : 'Perlu Perhatian',
+      color: score >= 90
+        ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+        : score >= 75
+        ? 'text-blue-700 bg-blue-50 border-blue-200'
+        : 'text-amber-700 bg-amber-50 border-amber-200',
+      highlight: `${uVisits.length} kunjungan UKS (${resolvedVisits} teratasi), ${uExams.length} skrining glukosa (${normalExams} hasil normal).`,
+    };
+  });
+
+  // Top Complaints Map
+  const complaintCounts = new Map<string, number>();
+  visits.forEach((v) => {
+    const c = v.main_complaint?.trim();
+    if (c) complaintCounts.set(c, (complaintCounts.get(c) || 0) + 1);
+  });
+  const topComplaint = Array.from(complaintCounts.entries()).sort((a, b) => b[1] - a[1])[0];
+
+  const normalExamsCount = exams.filter((e) => e.classification === 'normal').length;
+  const normalGlucoseRate = exams.length > 0 ? Math.round((normalExamsCount / exams.length) * 100) : 0;
+  const overallAvgGlucose = exams.length > 0 ? Math.round(exams.reduce((acc, curr) => acc + curr.result_value, 0) / exams.length) : 0;
+
+  const hasAnyData = exams.length > 0 || visits.length > 0;
+  const overallScore = hasAnyData
+    ? Math.round(
+        (exams.length > 0 ? (normalExamsCount / exams.length) * 50 : 45) +
+        (visits.length > 0 ? (visits.filter((v) => v.outcome === 'kembali_ke_kelas' || v.outcome === 'kembali_bekerja').length / visits.length) * 50 : 45)
+      )
+    : null;
 
   const handlePrint = () => {
     window.print();
@@ -223,55 +252,83 @@ export const TrendsAnalysis: React.FC = () => {
 
       {/* 4 Trend Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Tren Kunjungan */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1.5">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Tren Kunjungan UKS</span>
-            <span className="inline-flex items-center text-emerald-700 font-bold text-[10px]">
-              <ArrowDownRight className="w-3.5 h-3.5" /> -4.2% Bln Ini
+            <span className="inline-flex items-center text-blue-700 font-bold text-[10px]">
+              {visits.length} Total
             </span>
           </div>
-          <div className="text-2xl font-black text-slate-900 font-mono">Terkendali Baik</div>
+          <div className="text-2xl font-black text-slate-900 font-mono">
+            {visits.length > 0 ? `${visits.length} Kunjungan` : '0 Kunjungan'}
+          </div>
           <p className="text-[10px] text-slate-500">
-            Penurunan insiden penyakit menular berkat protokol cuci tangan.
+            {visits.length > 0
+              ? `${visits.filter((v) => v.participant?.category === 'siswa').length} Siswa • ${visits.filter((v) => v.participant?.category === 'karyawan').length} Guru/Staf`
+              : 'Belum ada data kunjungan UKS di database.'}
           </p>
         </div>
 
+        {/* Stabilitas Glukosa */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1.5">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Stabilitas Glukosa</span>
-            <span className="inline-flex items-center text-blue-700 font-bold text-[10px]">
-              <ArrowUpRight className="w-3.5 h-3.5" /> 94% Normal
-            </span>
+            {exams.length > 0 ? (
+              <span className="inline-flex items-center text-emerald-700 font-bold text-[10px]">
+                <ArrowUpRight className="w-3.5 h-3.5" /> {normalGlucoseRate}% Normal
+              </span>
+            ) : (
+              <span className="text-[10px] text-slate-400 font-bold">0 Data</span>
+            )}
           </div>
-          <div className="text-2xl font-black text-blue-900 font-mono">98 mg/dL Rata-Rata</div>
+          <div className="text-2xl font-black text-blue-900 font-mono">
+            {exams.length > 0 ? `${overallAvgGlucose} mg/dL Rata-Rata` : 'Belum Ada Data'}
+          </div>
           <p className="text-[10px] text-slate-500">
-            Kategori stabil dan aman pada rentang usia anak sekolah.
+            {exams.length > 0
+              ? `${normalExamsCount} dari ${exams.length} pemeriksaan kategori normal.`
+              : 'Belum ada data skrining glukosa di database.'}
           </p>
         </div>
 
+        {/* Puncak Kasus Sakit */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1.5">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-            <span>Puncak Kasus Sakit</span>
-            <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold">
-              Pekan Ujian
-            </span>
+            <span>Keluhan Klinis Dominan</span>
+            {topComplaint && (
+              <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold">
+                {topComplaint[1]} Kasus
+              </span>
+            )}
           </div>
-          <div className="text-2xl font-black text-amber-700 font-mono">Keluhan Pusing & Maag</div>
+          <div className="text-2xl font-black text-amber-700 font-mono truncate">
+            {topComplaint ? topComplaint[0] : 'Belum Ada Data'}
+          </div>
           <p className="text-[10px] text-slate-500">
-            Korelasi kuat dengan pola tidur larut & telat sarapan.
+            {topComplaint
+              ? 'Keluhan paling sering dialami partisipan di ruang UKS.'
+              : 'Tidak ada catatan keluhan penyakit di database.'}
           </p>
         </div>
 
+        {/* Indeks Sehat Lazuardi */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1.5">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
             <span>Indeks Sehat Lazuardi</span>
-            <span className="inline-flex items-center text-emerald-700 font-bold text-[10px]">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Sangat Baik
-            </span>
+            {overallScore !== null && (
+              <span className="inline-flex items-center text-emerald-700 font-bold text-[10px]">
+                <CheckCircle2 className="w-3.5 h-3.5" /> {overallScore >= 80 ? 'Optimal' : 'Pemantauan'}
+              </span>
+            )}
           </div>
-          <div className="text-2xl font-black text-emerald-700 font-mono">89.8 / 100</div>
+          <div className="text-2xl font-black text-emerald-700 font-mono">
+            {overallScore !== null ? `${overallScore} / 100` : 'Belum Tersedia'}
+          </div>
           <p className="text-[10px] text-slate-500">
-            Rata-rata tertimbang kebugaran siswa dan staf seluruh unit.
+            {overallScore !== null
+              ? 'Indeks komposit kesehatan berdasarkan resolusi UKS & hasil glukosa.'
+              : 'Memerlukan data rekam medis untuk perhitungan indeks.'}
           </p>
         </div>
       </div>
@@ -290,34 +347,42 @@ export const TrendsAnalysis: React.FC = () => {
           </div>
         </div>
 
-        <div className="h-80 w-full pt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={monthlyTrendsData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-              <defs>
-                <linearGradient id="colorSakit" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.0} />
-                </linearGradient>
-                <linearGradient id="colorCedera" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
-                </linearGradient>
-                <linearGradient id="colorRutin" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0284c7" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#0284c7" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="bulan" stroke="#64748b" tick={{ fontSize: 11 }} />
-              <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
-              <Tooltip />
-              <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-              <Area type="monotone" dataKey="Kasus Sakit" stroke="#ef4444" fillOpacity={1} fill="url(#colorSakit)" strokeWidth={2} />
-              <Area type="monotone" dataKey="Kasus Cedera" stroke="#f59e0b" fillOpacity={1} fill="url(#colorCedera)" strokeWidth={2} />
-              <Area type="monotone" dataKey="Skrining Rutin" stroke="#0284c7" fillOpacity={1} fill="url(#colorRutin)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        {!hasTrendData ? (
+          <div className="h-80 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+            <TrendingUp className="w-8 h-8 text-slate-300 mb-2" />
+            <p className="font-semibold text-xs text-slate-600">Belum ada data tren longitudinal</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Grafik tren akan muncul otomatis saat kunjungan UKS atau skrining glukosa tercatat di database Supabase.</p>
+          </div>
+        ) : (
+          <div className="h-80 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyTrendsData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="colorSakit" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="colorCedera" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="colorRutin" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0284c7" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#0284c7" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="bulan" stroke="#64748b" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                <Area type="monotone" dataKey="Kasus Sakit" stroke="#ef4444" fillOpacity={1} fill="url(#colorSakit)" strokeWidth={2} />
+                <Area type="monotone" dataKey="Kasus Cedera" stroke="#f59e0b" fillOpacity={1} fill="url(#colorCedera)" strokeWidth={2} />
+                <Area type="monotone" dataKey="Skrining Rutin" stroke="#0284c7" fillOpacity={1} fill="url(#colorRutin)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Glucose Longitudinal Movement & Academic Calendar Correlation */}
@@ -336,19 +401,27 @@ export const TrendsAnalysis: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyTrendsData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="bulan" stroke="#64748b" tick={{ fontSize: 10 }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 10 }} domain={[80, 120]} />
-                <Tooltip />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
-                <Line type="monotone" dataKey="Rata Glukosa (mg/dL)" stroke="#059669" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="Kasus Waspada Glukosa" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {!hasGlucoseTrendData ? (
+            <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Activity className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="font-semibold text-xs text-slate-600">Belum ada data pergerakan glukosa</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Belum ada data pemeriksaan gula darah berkala pada periode ini di database Supabase.</p>
+            </div>
+          ) : (
+            <div className="h-64 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyTrendsData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="bulan" stroke="#64748b" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 10 }} domain={[80, 120]} />
+                  <Tooltip />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                  <Line type="monotone" dataKey="Rata Glukosa (mg/dL)" stroke="#059669" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="Kasus Waspada Glukosa" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {/* Academic Calendar Health Insights (6 cols) */}

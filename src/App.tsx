@@ -196,9 +196,9 @@ function MainApp() {
       case 'my_profile':
         return <ProfilePage />;
       case 'my_glucose':
-        return <GlucoseExamList />;
+        return <GlucoseExamList personalOnly={true} />;
       case 'my_visits':
-        return <UksVisitList />;
+        return <UksVisitList personalOnly={true} />;
 
       // Pimpinan Tabs
       case 'pimpinan_dashboard':

@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { ShieldCheck, Printer, FileSpreadsheet } from 'lucide-react';
+import { ShieldCheck, Printer, FileSpreadsheet, Activity, HeartPulse, User, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { DataService } from '../../services/dataService';
 import { ExportService } from '../../services/exportService';
@@ -26,6 +26,10 @@ export const PimpinanDashboard: React.FC<PimpinanDashboardProps> = ({ onNavigate
   const followUps = DataService.getGlucoseFollowUps(currentUser);
   const units = DataService.getUnits();
   const repeatWarnings = DataService.getRepeatVisitWarnings();
+
+  // Personal records corresponding to the logged-in user
+  const myExams = exams.filter((e) => e.participant_id === currentUser.id);
+  const myVisits = visits.filter((v) => v.participant_id === currentUser.id);
 
   // Follow-up completion percentage
   const completedFollowUps = followUps.filter((f) => f.follow_up_status === 'selesai').length;
@@ -152,6 +156,86 @@ export const PimpinanDashboard: React.FC<PimpinanDashboardProps> = ({ onNavigate
           </div>
           <div className="text-2xl font-black text-amber-600 mt-1 font-mono">{repeatWarnings.length} Kasus</div>
           <div className="text-[10px] text-slate-500 mt-1">Klik untuk tren & proyeksi jangka panjang</div>
+        </div>
+      </div>
+
+      {/* Rekam Medis Pribadi Pimpinan (Akun Login) */}
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+              <User className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                Rekam Medis Pribadi Saya ({currentUser.full_name})
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Pemeriksaan kesehatan dan riwayat kunjungan UKS terdaftar untuk akun login Anda.
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-mono px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg font-semibold self-start sm:self-center">
+            ID: {currentUser.employee_or_student_id || currentUser.id}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          {/* Card Pemeriksaan Gula Darah Saya */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50/60 to-teal-50/40 border border-emerald-200/80 flex flex-col justify-between space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-bold text-emerald-900">
+                <span className="flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-emerald-600" />
+                  Pemeriksaan Gula Darah Saya
+                </span>
+                <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                  {myExams.length} Kali Pemeriksaan
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600">
+                {myExams.length > 0
+                  ? `Hasil terakhir: ${myExams[0].result_value} ${myExams[0].result_unit} (${myExams[0].classification.replace('_', ' ')}) pada ${new Date(myExams[0].examination_datetime).toLocaleDateString('id-ID')}`
+                  : 'Belum ada catatan pemeriksaan gula darah untuk akun Anda di database Supabase.'}
+              </p>
+            </div>
+
+            <button
+              onClick={() => onNavigateTab && onNavigateTab('my_glucose')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline pt-1 self-start"
+            >
+              <span>Buka Riwayat Gula Darah Saya</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Card Kunjungan UKS Saya */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50/60 to-indigo-50/40 border border-blue-200/80 flex flex-col justify-between space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-bold text-blue-900">
+                <span className="flex items-center gap-1.5">
+                  <HeartPulse className="w-4 h-4 text-blue-600" />
+                  Kunjungan UKS Saya
+                </span>
+                <span className="text-[10px] font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                  {myVisits.length} Kali Kunjungan
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600">
+                {myVisits.length > 0
+                  ? `Kunjungan terakhir: ${myVisits[0].main_complaint} (${myVisits[0].visit_reason}) pada ${new Date(myVisits[0].visit_datetime).toLocaleDateString('id-ID')}`
+                  : 'Belum ada catatan kunjungan ruang UKS untuk akun Anda di database Supabase.'}
+              </p>
+            </div>
+
+            <button
+              onClick={() => onNavigateTab && onNavigateTab('my_visits')}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-800 hover:underline pt-1 self-start"
+            >
+              <span>Buka Riwayat Kunjungan UKS Saya</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

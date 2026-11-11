@@ -71,7 +71,7 @@ export const PimpinanFollowUpsStats: React.FC = () => {
   const staffReferred = staffFollowUps.filter((f) => f.follow_up_status === 'dirujuk').length;
 
   const totalResolved = studentResolved + staffResolved;
-  const resolutionRate = followUps.length > 0 ? Math.round((totalResolved / followUps.length) * 100) : 100;
+  const resolutionRate = followUps.length > 0 ? Math.round((totalResolved / followUps.length) * 100) : 0;
 
   // Comparison Bar Chart Data
   const statusComparisonData = [
@@ -97,14 +97,33 @@ export const PimpinanFollowUpsStats: React.FC = () => {
     { name: 'Pemantauan Glukosa', count: followUps.filter((f) => f.source === 'glucose').length, color: '#10b981' },
     { name: 'Pemantauan Pasca UKS', count: followUps.filter((f) => f.source === 'visit').length, color: '#0284c7' },
     { name: 'Peringatan Kunjungan Berulang', count: repeatWarnings.length, color: '#f59e0b' },
-  ];
+  ].filter((s) => s.count > 0);
 
-  // Referral destinations
-  const referralDestinations = [
-    { name: 'Puskesmas Kecamatan', count: Math.max(1, Math.round((studentReferred + staffReferred) * 0.45)) },
-    { name: 'RS Mitra (Hermina / Siloam)', count: Math.max(1, Math.round((studentReferred + staffReferred) * 0.35)) },
-    { name: 'Klinik Dokter Keluarga / Mandiri', count: Math.max(1, Math.round((studentReferred + staffReferred) * 0.20)) },
-  ];
+  // Referral destinations (strictly authentic data from Supabase follow-ups & referred visits)
+  const allVisits = DataService.getUksVisits(currentUser).filter((v) => {
+    if (selectedUnit !== 'all' && v.participant?.unit_id !== selectedUnit) return false;
+    return true;
+  });
+
+  const destinationCounts = new Map<string, number>();
+
+  followUps.forEach((f) => {
+    const faskesName = (f as any).referral_destination || (f as any).referral_details;
+    if (typeof faskesName === 'string' && faskesName.trim()) {
+      destinationCounts.set(faskesName.trim(), (destinationCounts.get(faskesName.trim()) || 0) + 1);
+    }
+  });
+
+  allVisits.forEach((v) => {
+    if (v.outcome === 'dirujuk') {
+      const fac = v.referral_destination?.trim() || 'Faskes Rujukan Medis';
+      destinationCounts.set(fac, (destinationCounts.get(fac) || 0) + 1);
+    }
+  });
+
+  const referralDestinations = Array.from(destinationCounts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 
   // Unit breakdown table
   const unitBreakdown = units.map((u) => {
@@ -277,19 +296,27 @@ export const PimpinanFollowUpsStats: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={statusComparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="status" stroke="#64748b" tick={{ fontSize: 11 }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                <Bar dataKey="Siswa" fill="#0284c7" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Guru & Karyawan" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {followUps.length === 0 ? (
+            <div className="h-72 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <ClipboardList className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="font-semibold text-xs text-slate-600">Belum ada kasus tindak lanjut</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Seluruh kasus UKS dan skrining saat ini tertangani atau belum memerlukan evaluasi lanjutan.</p>
+            </div>
+          ) : (
+            <div className="h-72 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={statusComparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="status" stroke="#64748b" tick={{ fontSize: 11 }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                  <Bar dataKey="Siswa" fill="#0284c7" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="Guru & Karyawan" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {/* Chart 2: Sumber Tindak Lanjut (5 cols) */}
@@ -306,28 +333,36 @@ export const PimpinanFollowUpsStats: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={sourceStats}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={3}
-                  dataKey="count"
-                  label={({ percent }: { percent?: number }) => `${(((percent ?? 0) * 100)).toFixed(0)}%`}
-                >
-                  {sourceStats.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {sourceStats.length === 0 ? (
+            <div className="h-72 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Layers className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="font-semibold text-xs text-slate-600">Belum ada sumber kasus tindak lanjut</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Tidak ada kasus aktif pemantauan glukosa atau UKS.</p>
+            </div>
+          ) : (
+            <div className="h-72 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={sourceStats}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={3}
+                    dataKey="count"
+                    label={({ percent }: { percent?: number }) => `${(((percent ?? 0) * 100)).toFixed(0)}%`}
+                  >
+                    {sourceStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 
@@ -342,19 +377,27 @@ export const PimpinanFollowUpsStats: React.FC = () => {
             </h3>
           </div>
 
-          <div className="space-y-3 pt-1">
-            {referralDestinations.map((faskes, idx) => (
-              <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                <div>
-                  <div className="font-bold text-slate-900">{faskes.name}</div>
-                  <div className="text-[10px] text-slate-500">Kemitraan Layanan Kesehatan Primer & Rujukan</div>
+          {referralDestinations.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Building2 className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+              <p className="font-semibold text-xs text-slate-600">Belum ada rujukan ke faskes luar</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Tidak ada data rujukan medis yang tercatat di database Supabase.</p>
+            </div>
+          ) : (
+            <div className="space-y-3 pt-1">
+              {referralDestinations.map((faskes, idx) => (
+                <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                  <div>
+                    <div className="font-bold text-slate-900">{faskes.name}</div>
+                    <div className="text-[10px] text-slate-500">Kemitraan Layanan Kesehatan Primer & Rujukan</div>
+                  </div>
+                  <span className="font-mono font-bold text-slate-800 px-3 py-1 bg-white border border-slate-200 rounded-lg">
+                    {faskes.count} rujukan
+                  </span>
                 </div>
-                <span className="font-mono font-bold text-slate-800 px-3 py-1 bg-white border border-slate-200 rounded-lg">
-                  {faskes.count} rujukan
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Coordination Standard (6 cols) */}

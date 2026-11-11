@@ -100,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'notifications', label: '6. Notifikasi', icon: BellRing },
   ];
 
-  // 4. Menu Pimpinan (6 items)
+  // 4. Menu Pimpinan (8 items)
   const pimpinanMenuItems: MenuItem[] = [
     { id: 'pimpinan_dashboard', label: '1. Dashboard Manajemen', icon: LayoutDashboard },
     { id: 'stats_glucose', label: '2. Statistik Pemeriksaan Gula Darah', icon: Activity },
@@ -108,6 +108,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'stats_followups', label: '4. Statistik Tindak Lanjut', icon: ClipboardList },
     { id: 'reports_by_unit', label: '5. Laporan per Unit', icon: Layers },
     { id: 'trends_analysis', label: '6. Tren dan Analisis', icon: TrendingUp },
+    { id: 'my_glucose', label: '7. Pemeriksaan Gula Darah Saya', icon: Activity },
+    { id: 'my_visits', label: '8. Kunjungan UKS Saya', icon: HeartPulse },
   ];
 
   let currentMenuItems: MenuItem[] = petugasMenuItems;

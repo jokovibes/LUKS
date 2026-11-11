@@ -90,7 +90,7 @@ export const PimpinanVisitsStats: React.FC = () => {
     },
   ];
 
-  // Top Complaints Map
+  // Top Complaints Map (strictly authentic Supabase data)
   const complaintCounts = new Map<string, number>();
   visits.forEach((v) => {
     const complaint = v.main_complaint?.trim();
@@ -104,14 +104,7 @@ export const PimpinanVisitsStats: React.FC = () => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  // If few specific complaints, fallback to standard categories
-  const complaintBarData = topComplaints.length > 0 ? topComplaints : [
-    { name: 'Pusing / Sakit Kepala', count: Math.round(visits.length * 0.35) || 5 },
-    { name: 'Demam / Meriang', count: Math.round(visits.length * 0.25) || 3 },
-    { name: 'Sakit Perut / Maag', count: Math.round(visits.length * 0.20) || 2 },
-    { name: 'Cedera Olahraga / Terjatuh', count: Math.round(visits.length * 0.12) || 2 },
-    { name: 'Batuk / Pilek (ISPA)', count: Math.round(visits.length * 0.08) || 1 },
-  ];
+  const complaintBarData = topComplaints;
 
   // Outcome distribution pie chart
   const outcomeStats = [
@@ -121,13 +114,38 @@ export const PimpinanVisitsStats: React.FC = () => {
     { name: 'Dirujuk ke Faskes', count: referredVisits.length, color: '#ef4444' },
   ].filter((item) => item.count > 0);
 
-  // Hourly visit pattern
-  const peakHoursData = [
-    { jam: '07:00 - 09:00', Siswa: Math.round(studentVisits.length * 0.15) || 2, Staf: Math.round(staffVisits.length * 0.25) || 1 },
-    { jam: '09:00 - 11:00 (Istirahat 1)', Siswa: Math.round(studentVisits.length * 0.45) || 5, Staf: Math.round(staffVisits.length * 0.30) || 2 },
-    { jam: '11:00 - 13:00 (Ishoma)', Siswa: Math.round(studentVisits.length * 0.25) || 3, Staf: Math.round(staffVisits.length * 0.30) || 1 },
-    { jam: '13:00 - 15:30 (Sore)', Siswa: Math.round(studentVisits.length * 0.15) || 2, Staf: Math.round(staffVisits.length * 0.15) || 1 },
+  // Hourly visit pattern (strictly computed from visit_datetime)
+  const peakHoursSlots = [
+    { jam: '07:00 - 09:00', Siswa: 0, Staf: 0 },
+    { jam: '09:00 - 11:00 (Istirahat 1)', Siswa: 0, Staf: 0 },
+    { jam: '11:00 - 13:00 (Ishoma)', Siswa: 0, Staf: 0 },
+    { jam: '13:00 - 16:00 (Sore)', Siswa: 0, Staf: 0 },
   ];
+
+  visits.forEach((v) => {
+    if (!v.visit_datetime) return;
+    const d = new Date(v.visit_datetime);
+    if (isNaN(d.getTime())) return;
+    const h = d.getHours();
+    const isSiswa = v.participant?.category === 'siswa';
+
+    if (h >= 7 && h < 9) {
+      if (isSiswa) peakHoursSlots[0].Siswa++;
+      else peakHoursSlots[0].Staf++;
+    } else if (h >= 9 && h < 11) {
+      if (isSiswa) peakHoursSlots[1].Siswa++;
+      else peakHoursSlots[1].Staf++;
+    } else if (h >= 11 && h < 13) {
+      if (isSiswa) peakHoursSlots[2].Siswa++;
+      else peakHoursSlots[2].Staf++;
+    } else if (h >= 13 && h <= 16) {
+      if (isSiswa) peakHoursSlots[3].Siswa++;
+      else peakHoursSlots[3].Staf++;
+    }
+  });
+
+  const peakHoursTotal = peakHoursSlots.reduce((acc, slot) => acc + slot.Siswa + slot.Staf, 0);
+  const peakHoursData = peakHoursSlots;
 
   // Unit breakdown table data
   const unitBreakdown = units.map((u) => {
@@ -294,19 +312,27 @@ export const PimpinanVisitsStats: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={reasonComparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="alasan" stroke="#64748b" tick={{ fontSize: 11 }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                <Bar dataKey="Siswa" fill="#0284c7" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="Guru & Karyawan" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {visits.length === 0 ? (
+            <div className="h-72 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <HeartPulse className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="font-semibold text-xs text-slate-600">Belum ada data kunjungan UKS</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Data kunjungan belum tercatat di database Supabase.</p>
+            </div>
+          ) : (
+            <div className="h-72 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={reasonComparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="alasan" stroke="#64748b" tick={{ fontSize: 11 }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                  <Bar dataKey="Siswa" fill="#0284c7" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="Guru & Karyawan" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {/* Chart 2: Hasil Disposisi Pasien (5 cols) */}
@@ -323,28 +349,36 @@ export const PimpinanVisitsStats: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={outcomeStats}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={3}
-                  dataKey="count"
-                  label={({ percent }: { percent?: number }) => `${(((percent ?? 0) * 100)).toFixed(0)}%`}
-                >
-                  {outcomeStats.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          {outcomeStats.length === 0 ? (
+            <div className="h-72 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Activity className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="font-semibold text-xs text-slate-600">Belum ada data disposisi</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Belum ada tindakan akhir pasien yang tercatat.</p>
+            </div>
+          ) : (
+            <div className="h-72 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={outcomeStats}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={3}
+                    dataKey="count"
+                    label={({ percent }: { percent?: number }) => `${(((percent ?? 0) * 100)).toFixed(0)}%`}
+                  >
+                    {outcomeStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 
@@ -364,19 +398,27 @@ export const PimpinanVisitsStats: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={peakHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="jam" stroke="#64748b" tick={{ fontSize: 10 }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                <Bar dataKey="Siswa" fill="#0ea5e9" stackId="a" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Staf" fill="#a855f7" stackId="a" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {peakHoursTotal === 0 ? (
+            <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Clock className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="font-semibold text-xs text-slate-600">Belum ada data waktu kunjungan puncak</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Grafik akan terisi otomatis saat kunjungan UKS tercatat di database.</p>
+            </div>
+          ) : (
+            <div className="h-64 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={peakHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="jam" stroke="#64748b" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                  <Bar dataKey="Siswa" fill="#0ea5e9" stackId="a" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="Staf" fill="#a855f7" stackId="a" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {/* Top Complaints (5 cols) */}
@@ -393,21 +435,29 @@ export const PimpinanVisitsStats: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-2.5 pt-1">
-            {complaintBarData.map((c, idx) => (
-              <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-900 font-bold flex items-center justify-center text-[10px] shrink-0">
-                    {idx + 1}
+          {complaintBarData.length === 0 ? (
+            <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Stethoscope className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="font-semibold text-xs text-slate-600">Belum ada keluhan klinis</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Belum ada catatan keluhan kunjungan di database Supabase.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5 pt-1">
+              {complaintBarData.map((c, idx) => (
+                <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-900 font-bold flex items-center justify-center text-[10px] shrink-0">
+                      {idx + 1}
+                    </span>
+                    <span className="font-semibold text-slate-800 truncate">{c.name}</span>
+                  </div>
+                  <span className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-mono font-bold text-slate-900 shrink-0">
+                    {c.count} kasus
                   </span>
-                  <span className="font-semibold text-slate-800 truncate">{c.name}</span>
                 </div>
-                <span className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-mono font-bold text-slate-900 shrink-0">
-                  {c.count} kasus
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

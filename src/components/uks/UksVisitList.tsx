@@ -42,11 +42,13 @@ import { SchoolLetterhead } from '../common/SchoolLetterhead';
 interface UksVisitListProps {
   onOpenRegister?: () => void;
   filterActiveOnly?: boolean;
+  personalOnly?: boolean;
 }
 
 export const UksVisitList: React.FC<UksVisitListProps> = ({
   onOpenRegister,
   filterActiveOnly = false,
+  personalOnly = false,
 }) => {
   const { currentUser, role } = useAuth();
   const [reloadKey, setReloadKey] = useState(0);
@@ -91,10 +93,13 @@ export const UksVisitList: React.FC<UksVisitListProps> = ({
 
   if (!currentUser) return null;
 
-  const allVisits = React.useMemo(
-    () => DataService.getUksVisits(currentUser),
-    [currentUser, reloadKey]
-  );
+  const allVisits = React.useMemo(() => {
+    const list = DataService.getUksVisits(currentUser);
+    if (personalOnly) {
+      return list.filter((v) => v.participant_id === currentUser.id);
+    }
+    return list;
+  }, [currentUser, reloadKey, personalOnly]);
   const units = DataService.getUnits();
   const unitMap = new Map(units.map((u) => [u.id, u.unit_name]));
 
@@ -436,10 +441,14 @@ export const UksVisitList: React.FC<UksVisitListProps> = ({
         <div>
           <div className="flex items-center gap-2 text-blue-900 font-extrabold text-lg">
             <HeartPulse className="w-5 h-5 text-rose-600" />
-            <span>Pencatatan & Riwayat Kunjungan UKS</span>
+            <span>
+              {personalOnly ? 'Riwayat Kunjungan UKS Saya' : 'Pencatatan & Riwayat Kunjungan UKS'}
+            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manajemen alur kedatangan, penanganan keluhan, observasi tanda vital, dan disposisi kepulangan.
+            {personalOnly
+              ? `Catatan riwayat kunjungan ke ruang UKS sekolah untuk akun: ${currentUser.full_name} (${currentUser.employee_or_student_id})`
+              : 'Manajemen alur kedatangan, penanganan keluhan, observasi tanda vital, dan disposisi kepulangan.'}
           </p>
         </div>
 
@@ -450,7 +459,9 @@ export const UksVisitList: React.FC<UksVisitListProps> = ({
                 filteredVisits,
                 assessmentsMap,
                 unitMap,
-                `Buku Register Kunjungan UKS (${filteredVisits.length} Catatan)`
+                personalOnly
+                  ? `Catatan Kunjungan UKS - ${currentUser.full_name}`
+                  : `Buku Register Kunjungan UKS (${filteredVisits.length} Catatan)`
               )
             }
             className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-semibold shadow-xs transition"
@@ -466,7 +477,7 @@ export const UksVisitList: React.FC<UksVisitListProps> = ({
             Ekspor Excel (.xlsx)
           </button>
 
-          {(role === 'petugas_uks' || role === 'admin') && (
+          {!personalOnly && (role === 'petugas_uks' || role === 'admin') && (
             <>
               <button
                 type="button"
@@ -488,7 +499,7 @@ export const UksVisitList: React.FC<UksVisitListProps> = ({
             </>
           )}
 
-          {(role === 'petugas_uks' || role === 'admin') && onOpenRegister && (
+          {!personalOnly && (role === 'petugas_uks' || role === 'admin') && onOpenRegister && (
             <button
               onClick={onOpenRegister}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-xs transition"
